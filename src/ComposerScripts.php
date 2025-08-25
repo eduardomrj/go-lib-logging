@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace GOlib\Log;
 
 use Composer\Script\Event;
+use Composer\Util\Filesystem;
 
 /**
  * Composer scripts for library installation lifecycle.
@@ -32,27 +33,32 @@ class ComposerScripts
      */
     private static function copyAdiantiCoreApplication(Event $event): void
     {
-        $source = __DIR__ . '/AdiantiCoreApplication.php';
-        $target = getcwd() . '/lib/adianti/core/AdiantiCoreApplication.php';
+        $io = $event->getIO();
+        $filesystem = new Filesystem();
+        
+        // Caminho do diretório 'vendor'
+        $vendorDir = $event->getComposer()->getConfig()->get('vendor-dir');
+        // O diretório raiz do projeto é o pai do diretório 'vendor'
+        $projectRoot = dirname($vendorDir);
 
-        if (!is_file($source)) {
-            $event->getIO()->writeError("Source file not found: {$source}");
+        $source = realpath(__DIR__ . '/../resources/AdiantiCoreApplication.php');
+        $target = $projectRoot . '/lib/adianti/core/AdiantiCoreApplication.php';
+
+        if (!$source) {
+            $io->writeError("<error>Source file not found: " . __DIR__ . "/../resources/AdiantiCoreApplication.php</error>");
             return;
         }
 
         $targetDir = dirname($target);
-        if (!is_dir($targetDir)) {
-            if (!mkdir($targetDir, 0777, true) && !is_dir($targetDir)) {
-                $event->getIO()->writeError("Unable to create directory: {$targetDir}");
-                return;
-            }
-        }
-
-        if (!copy($source, $target)) {
-            $event->getIO()->writeError("Failed to copy AdiantiCoreApplication.php to {$target}");
+        if (!$filesystem->ensureDirectoryExists($targetDir)) {
+            $io->writeError("<error>Unable to create directory: {$targetDir}</error>");
             return;
         }
 
-        $event->getIO()->write("AdiantiCoreApplication.php copied to lib/adianti/core");
+        if (copy($source, $target)) {
+            $io->write("<info>GO-Lib Logging: 'AdiantiCoreApplication.php' copied successfully to 'lib/adianti/core/'</info>");
+        } else {
+            $io->writeError("<error>GO-Lib Logging: Failed to copy 'AdiantiCoreApplication.php' to {$target}</error>");
+        }
     }
 }
