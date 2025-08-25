@@ -2,12 +2,19 @@
   "name": "eduardomrj/go-lib-logging",
   "description": "Biblioteca de logging para PHP 8.2/Adianti 7.5 baseada em Monolog",
   "type": "library",
-  "license": "proprietary",
+  "license": "MIT",
+  "homepage": "https://github.com/eduardomrj/go-lib-logging",
   "keywords": [
     "adianti",
     "logging",
     "monolog",
     "whoops"
+  ],
+  "authors": [
+    {
+      "name": "Eduardo Martins",
+      "email": "eduardo@sysautomacao.com.br"
+    }
   ],
   "require": {
     "php": "^8.2",
@@ -28,13 +35,10 @@
     "sort-packages": true
   },
   "scripts": {
-    "test": "phpunit",
-    "post-install-cmd": [
-      "GOlib\\Log\\ComposerScripts::postInstall"
-    ],
-    "post-update-cmd": [
-      "GOlib\\Log\\ComposerScripts::postUpdate"
-    ]
+    "test": "phpunit"
+  },
+  "support": {
+    "issues": "https://github.com/eduardomrj/go-lib-logging/issues"
   },
   "extra": {
     "branch-alias": {
