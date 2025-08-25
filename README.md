@@ -52,6 +52,26 @@ Caso ainda não exista uma tag publicada, use o alias de branch:
 composer require eduardomrj/go-lib-logging:1.0.x-dev@dev
 ```
 
+## Instalação no MadBuilder
+
+1. No MadBuilder, abra **Composer → Minhas configurações** e adicione o repositório:
+
+   ```
+   repositories.go-lib-logging vcs https://github.com/eduardomrj/go-lib-logging.git
+   ```
+
+2. Em **Composer → Meus Pacotes**, adicione o pacote:
+
+   ```
+   eduardomrj/go-lib-logging:^1.0
+   ```
+
+   Caso ainda não exista uma tag publicada, use o alias de branch:
+
+   ```
+   eduardomrj/go-lib-logging:1.0.x-dev@dev
+   ```
+
 ## Configuração
 
 1. Copie `src/logging.ini` para o diretório de configuração do seu projeto.
