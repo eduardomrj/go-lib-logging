@@ -3,7 +3,12 @@
   "description": "Biblioteca de logging para PHP 8.2/Adianti 7.5 baseada em Monolog",
   "type": "library",
   "license": "proprietary",
-  "keywords": ["adianti", "logging", "monolog", "whoops"],
+  "keywords": [
+    "adianti",
+    "logging",
+    "monolog",
+    "whoops"
+  ],
   "require": {
     "php": "^8.2",
     "filp/whoops": "^2.18.4",
@@ -14,13 +19,17 @@
   },
   "autoload": {
     "psr-4": {
-      "App\\Lib\\GOlib\\Log\\": "src/"
+      "GOlib\\Log\\": "src/"
     },
-    "classmap": ["src/"]
+    "classmap": [
+      "src/"
+    ]
   },
   "minimum-stability": "stable",
   "prefer-stable": true,
-  "config": {"sort-packages": true},
+  "config": {
+    "sort-packages": true
+  },
   "scripts": {
     "test": "phpunit"
   },
