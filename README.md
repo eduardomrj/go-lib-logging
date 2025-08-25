@@ -85,8 +85,9 @@ SSH (`git@github.com`) garantindo que sua chave pública esteja cadastrada no Gi
 
 ## Configuração
 
-1. Copie `src/logging.ini` para o diretório de configuração do seu projeto.
-2. Ajuste as opções conforme necessário. Exemplo:
+1. Copie `src/logging.ini` para `app/config/go-lib-logging.ini` no seu projeto.
+2. Certifique-se de que o diretório configurado em `file_handler.path` exista e possua permissão de escrita.
+3. Ajuste as opções conforme necessário. Exemplo:
 
 ```ini
 [logging]

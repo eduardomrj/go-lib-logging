@@ -112,6 +112,12 @@ class LogService
         $fileConfig = ConfigService::get('file_handler', null, []);
         $logPath = $fileConfig['path'] ?? 'app/logs/serket.log';
         $logDays = (int) ($fileConfig['days'] ?? 14);
+        $dir = dirname($logPath);
+        if (!is_dir($dir) || !is_writable($dir)) {
+            error_log('[go-lib-logging] Diretório de log inacessível: ' . $dir);
+            return;
+        }
+
         $fileHandler = new RotatingFileHandler($logPath, $logDays, Level::Debug);
         $fileHandler->setFormatter($formatter);
         $this->logger->pushHandler($fileHandler);

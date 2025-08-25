@@ -18,18 +18,30 @@ class ConfigService
 
     private static function loadConfig(): void
     {
-        if (self::$config === null) {
-            $app_ini_path = 'app/config/application.ini';
-            $log_ini_path = 'app/config/go-lib-logging.ini';
-
-            $app_ini = file_exists($app_ini_path) ? parse_ini_file($app_ini_path, true) : [];
-            $log_ini = file_exists($log_ini_path) ? parse_ini_file($log_ini_path, true) : [];
-            
-            $app_ini = is_array($app_ini) ? $app_ini : [];
-            $log_ini = is_array($log_ini) ? $log_ini : [];
-            
-            self::$config = array_merge_recursive($app_ini, $log_ini);
+        if (self::$config !== null) {
+            return;
         }
+
+        $app_ini_path = 'app/config/application.ini';
+        $log_ini_path = 'app/config/go-lib-logging.ini';
+
+        $app_ini = [];
+        if (file_exists($app_ini_path)) {
+            $app_ini = parse_ini_file($app_ini_path, true) ?: [];
+        }
+
+        if (!is_file($log_ini_path) || !is_readable($log_ini_path)) {
+            error_log('[go-lib-logging] Arquivo de configuração ausente: ' . $log_ini_path);
+            throw new \RuntimeException('Arquivo de configuração não encontrado: ' . $log_ini_path);
+        }
+
+        $log_ini = parse_ini_file($log_ini_path, true);
+        if ($log_ini === false) {
+            error_log('[go-lib-logging] Falha ao ler configuração: ' . $log_ini_path);
+            throw new \RuntimeException('Falha ao ler configuração: ' . $log_ini_path);
+        }
+
+        self::$config = array_merge_recursive($app_ini, $log_ini);
     }
 
     /**
