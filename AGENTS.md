@@ -14,7 +14,6 @@ O código principal está localizado em `src/` e organizado da seguinte forma:
 
 ### Handlers
 - **`src/handler/RateLimitingDiscordHandler.php`**: Handler que envia logs para um webhook do Discord. Verifica se o limite de mensagens por minuto foi excedido antes de enviar; caso contrário, registra a tentativa no meta-log.
-- **`src/handler/NativeMailerHandler.php`**: Handler que monta e envia um e-mail HTML via classe TMail, usado como alternativa ao MailService.
 - **`src/handler/AdiantiMailerHandler.php`**: Handler que utiliza MailService::send para enviar e-mails com log; ideal para aplicações Adianti.
 
 ## Configuração do logging.ini
@@ -63,7 +62,6 @@ O arquivo `src/logging.ini` define todas as configurações. Comentários começ
 
 ### Handlers de Email
 - **AdiantiMailerHandler**: Usa o MailService do Adianti para ler configurações de SMTP do banco de dados e enviar e-mails
-- **NativeMailerHandler**: Se preferir usar via TMail, ajuste o código para usá-lo e preencha as chaves de SMTP no config
 
 ### Inserção de Contexto
 Ao registrar logs, inclua variáveis de contexto como arquivo, linha, e ID do usuário. Os handlers já formatam e apresentam essas informações nas mensagens de Discord e e-mail.
@@ -82,7 +80,6 @@ Ao registrar logs, inclua variáveis de contexto como arquivo, linha, e ID do us
 
 - [LogService.php](https://github.com/eduardomrj/go-lib-logging/blob/b845175ea94f3885b50f8f5c2ba2d8041c47475e/src/service/LogService.php)
 - [RateLimitingDiscordHandler.php](https://github.com/eduardomrj/go-lib-logging/blob/b845175ea94f3885b50f8f5c2ba2d8041c47475e/src/handler/RateLimitingDiscordHandler.php)
-- [NativeMailerHandler.php](https://github.com/eduardomrj/go-lib-logging/blob/b845175ea94f3885b50f8f5c2ba2d8041c47475e/src/handler/NativeMailerHandler.php)
 - [AdiantiMailerHandler.php](https://github.com/eduardomrj/go-lib-logging/blob/b845175ea94f3885b50f8f5c2ba2d8041c47475e/src/handler/AdiantiMailerHandler.php)
 
 ---

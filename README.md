@@ -20,7 +20,6 @@ go-lib-logging/
 │   │   └── WhoopsErrorHandler.php
 │   ├── handler/
 │   │   ├── AdiantiMailerHandler.php
-│   │   ├── NativeMailerHandler.php
 │   │   └── RateLimitingDiscordHandler.php
 │   ├── service/
 │   │   ├── ConfigService.php
@@ -94,7 +93,7 @@ log_warnings_enabled = 1
 ## Exemplo de Uso
 
 ```php
-use App\Lib\GOlib\Log\Service\LogService;
+use GOlib\Log\Service\LogService;
 
 $logger = LogService::getInstance()->getLogger();
 $logger->info('Iniciando aplicação');

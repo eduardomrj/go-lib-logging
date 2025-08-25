@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Lib\GOlib\Log\Service;
+namespace GOlib\Log\Service;
 
 use Monolog\Formatter\LineFormatter;
 use Monolog\Handler\RotatingFileHandler;

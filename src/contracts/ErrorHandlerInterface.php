@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Lib\GOlib\Log\Contracts;
+namespace GOlib\Log\Contracts;
 
 /**
  * Interface para Tratadores de Erro (Error Handlers)

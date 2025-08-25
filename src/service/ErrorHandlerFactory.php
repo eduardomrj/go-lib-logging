@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace App\Lib\GOlib\Log\Service;
+namespace GOlib\Log\Service;
 
-use App\Lib\GOlib\Log\Contracts\ErrorHandlerInterface;
-use App\Lib\GOlib\Log\Error\ProductionErrorHandler;
-use App\Lib\GOlib\Log\Error\TExceptionViewHandler;
-use App\Lib\GOlib\Log\Error\WhoopsErrorHandler;
+use GOlib\Log\Contracts\ErrorHandlerInterface;
+use GOlib\Log\Error\ProductionErrorHandler;
+use GOlib\Log\Error\TExceptionViewHandler;
+use GOlib\Log\Error\WhoopsErrorHandler;
 
 /**
  * Factory para criar o Tratador de Erros (ErrorHandler) apropriado

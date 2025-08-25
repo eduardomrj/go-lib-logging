@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace App\Lib\GOlib\Log\Handler;
+namespace GOlib\Log\Handler;
 
 use Monolog\Handler\AbstractProcessingHandler;
 use Monolog\Level;
 use Monolog\LogRecord;
 use Adianti\Registry\TSession;
-use App\Lib\GOlib\Log\Service\MetaLogService;
+use GOlib\Log\Service\MetaLogService;
 use Exception;
 use MailService; // Usa a classe MailService do template
 

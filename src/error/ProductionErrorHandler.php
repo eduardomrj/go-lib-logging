@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace App\Lib\GOlib\Log\Error;
+namespace GOlib\Log\Error;
 
-use App\Lib\GOlib\Log\Contracts\ErrorHandlerInterface;
+use GOlib\Log\Contracts\ErrorHandlerInterface;
 use Adianti\Widget\Dialog\TMessage;
 
 /**
