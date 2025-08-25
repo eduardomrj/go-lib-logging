@@ -9,7 +9,7 @@ use ReflectionMethod;
 use Adianti\Control\TPage;
 use Adianti\Widget\Base\TScript;
 use Adianti\Widget\Dialog\TMessage;
-use GoLib\Logging\ErrorHandlerSetup;
+use GOlib\Log\Service\ErrorHandlerSetup;
 use Adianti\Core\AdiantiCoreTranslator;
 
 /**
