@@ -11,7 +11,7 @@
   },
   "autoload": {
     "psr-4": {
-      "EduardoMrj\\GoLibRabbitMQ\\": "src/"
+      "App\\Lib\\GOlib\\Log\\": "src/"
     }
   },
   "minimum-stability": "stable",
