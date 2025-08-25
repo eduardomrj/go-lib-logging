@@ -31,7 +31,13 @@
     "sort-packages": true
   },
   "scripts": {
-    "test": "phpunit"
+    "test": "phpunit",
+    "post-install-cmd": [
+      "GOlib\\Log\\ComposerScripts::postInstall"
+    ],
+    "post-update-cmd": [
+      "GOlib\\Log\\ComposerScripts::postUpdate"
+    ]
   },
   "extra": {
     "branch-alias": {
