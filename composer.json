@@ -1,9 +1,9 @@
 {
-  "name": "eduardomrj/go-lib-rabbitmq",
-  "description": "Adapters e serviços RabbitMQ (PhpAmqpLib) para PHP 8.2 / Adianti 7.5",
+  "name": "eduardomrj/go-lib-logging",
+  "description": "Biblioteca de logging para PHP 8.2/Adianti 7.5 baseada em Monolog",
   "type": "library",
   "license": "proprietary",
-  "keywords": ["adianti", "logging"],
+  "keywords": ["adianti", "logging", "monolog", "whoops"],
   "require": {
     "php": "^8.2",
     "filp/whoops": "^2.18.4",
@@ -11,7 +11,7 @@
   },
   "autoload": {
     "psr-4": {
-      "EduardoMrj\\GoLibRabbitMQ\\": "src/"
+      "App\\Lib\\GOlib\\Log\\": "src/"
     }
   },
   "minimum-stability": "stable",

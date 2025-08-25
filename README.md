@@ -15,9 +15,10 @@ go-lib-logging/
 
 # eduardomrj/go-lib-logging
 
-Adaptadores/Serviços para log e captura de erros usando:
+Biblioteca para logging e captura de erros utilizando:
 
-**php-amqplib/php-amqplib**
+- **monolog/monolog** para centralizar e formatar logs
+- **filp/whoops** para páginas de erro amigáveis
 
 Compatível com **PHP 8.2** e **Adianti 7.5**.
 
