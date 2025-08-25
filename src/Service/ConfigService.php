@@ -20,7 +20,7 @@ class ConfigService
     {
         if (self::$config === null) {
             $app_ini_path = 'app/config/application.ini';
-            $log_ini_path = 'app/config/logging.ini';
+            $log_ini_path = 'app/config/go-lib-logging.ini';
 
             $app_ini = file_exists($app_ini_path) ? parse_ini_file($app_ini_path, true) : [];
             $log_ini = file_exists($log_ini_path) ? parse_ini_file($log_ini_path, true) : [];
