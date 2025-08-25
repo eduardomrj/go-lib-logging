@@ -52,6 +52,18 @@ Caso ainda não exista uma tag publicada, use o alias de branch:
 composer require eduardomrj/go-lib-logging:1.0.x-dev@dev
 ```
 
+### Repositório privado
+
+Se o repositório for privado, autentique o Composer antes de executar o `require`.
+Crie um **Personal Access Token** no GitHub com escopo `repo` e configure-o:
+
+```sh
+composer config --global --auth github-oauth.github.com <TOKEN>
+```
+
+Substitua `<TOKEN>` pelo valor gerado. Como alternativa, utilize acesso via
+SSH (`git@github.com`) garantindo que sua chave pública esteja cadastrada no GitHub.
+
 ## Instalação no MadBuilder
 
 1. No MadBuilder, abra **Composer → Minhas configurações** e adicione o repositório:
