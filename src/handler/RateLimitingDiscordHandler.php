@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace App\Lib\GOlib\Log\Handler;
+namespace GOlib\Log\Handler;
 
 use Monolog\Handler\AbstractProcessingHandler;
 use Monolog\Level;
 use Monolog\LogRecord;
 use Adianti\Registry\TSession; // CORREÇÃO APLICADA
-use App\Lib\GOlib\Log\Service\MetaLogService;
+use GOlib\Log\Service\MetaLogService;
 
 /**
  * Handler customizado do Monolog para enviar logs para o Discord com Rate Limit.

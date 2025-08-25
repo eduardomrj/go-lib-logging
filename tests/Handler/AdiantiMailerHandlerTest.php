@@ -25,8 +25,8 @@ namespace Adianti\Registry {
 
 namespace Tests\Handler {
 
-use App\Lib\GOlib\Log\Handler\AdiantiMailerHandler;
-use App\Lib\GOlib\Log\Service\ConfigService;
+use GOlib\Log\Handler\AdiantiMailerHandler;
+use GOlib\Log\Service\ConfigService;
 use DateTimeImmutable;
 use Monolog\Level;
 use Monolog\LogRecord;

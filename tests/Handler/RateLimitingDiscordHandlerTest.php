@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Handler;
 
-use App\Lib\GOlib\Log\Handler\RateLimitingDiscordHandler;
+use GOlib\Log\Handler\RateLimitingDiscordHandler;
 use Monolog\Level;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;

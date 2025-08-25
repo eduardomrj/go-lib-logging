@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Service;
 
-use App\Lib\GOlib\Log\Service\MetaLogService;
-use App\Lib\GOlib\Log\Service\ConfigService;
+use GOlib\Log\Service\MetaLogService;
+use GOlib\Log\Service\ConfigService;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
 

@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace App\Lib\GOlib\Log\Service;
+namespace GOlib\Log\Service;
 
-use App\Lib\GOlib\Log\Handler\AdiantiMailerHandler;
-use App\Lib\GOlib\Log\Handler\RateLimitingDiscordHandler;
+use GOlib\Log\Handler\AdiantiMailerHandler;
+use GOlib\Log\Handler\RateLimitingDiscordHandler;
 use Monolog\Formatter\LineFormatter;
 use Monolog\Handler\DeduplicationHandler;
 use Monolog\Handler\FingersCrossedHandler;
