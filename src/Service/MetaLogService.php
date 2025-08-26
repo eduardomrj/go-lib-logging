@@ -22,6 +22,26 @@ class MetaLogService
 {
     private static ?Logger $instance = null;
 
+    private static function ensureWritableDir(string $dir): string
+    {
+        // Se já existe e é gravável, ok
+        if (is_dir($dir) && is_writable($dir)) {
+            return $dir;
+        }
+
+        // Tenta criar (com recursão) e trata condição de corrida
+        if (!is_dir($dir) && @mkdir($dir, 0775, true) && is_dir($dir)) {
+            return $dir;
+        }
+
+        // Fallback para um diretório no /tmp
+        $fallback = rtrim(sys_get_temp_dir(), DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . 'go-lib-logging';
+        if (!is_dir($fallback)) {
+            @mkdir($fallback, 0775, true);
+        }
+        return $fallback;
+    }
+
     /**
      * Cria e retorna uma instância de Logger configurada apenas com o File Handler.
      */
@@ -37,14 +57,10 @@ class MetaLogService
             $logDays = (int) ($fileConfig['days'] ?? 14);
             $dir = dirname($logPath);
 
-            if (!is_dir($dir)) {
-                @mkdir($dir, 0775, true);
-            }
-            if (!is_dir($dir) || !is_writable($dir)) {
-                error_log('[go-lib-logging] Diretório de log inacessível: ' . $dir);
-                // fallback para o temp do sistema
-                $logPath = GO_LIB_LOG_DEFAULT_FILE;
-            }
+            $dir = self::ensureWritableDir($dir);
+
+            // Recalcula caminho do arquivo no diretório garantido
+            $logPath = $dir . DIRECTORY_SEPARATOR . basename($logPath);
 
             $fileHandler = new RotatingFileHandler($logPath, $logDays, Level::Info);
             $fileHandler->setFormatter(new LineFormatter("[%datetime%] %channel%.%level_name%: %message% %context% %extra%\n"));
