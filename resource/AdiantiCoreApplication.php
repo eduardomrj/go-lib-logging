@@ -9,14 +9,14 @@ use ReflectionMethod;
 use Adianti\Control\TPage;
 use Adianti\Widget\Base\TScript;
 use Adianti\Widget\Dialog\TMessage;
-use GOlib\Log\Service\ErrorHandlerSetup;
 use Adianti\Core\AdiantiCoreTranslator;
+use GOlib\Log\Service\ErrorHandlerSetup;
 
 /**
  * Estrutura base para executar uma aplicação web.
  *
  * @version    7.5 (Adianti Framework)
- * @version    1.8.0 (GOLib-Loggind Module Integration)
+ * @version    1.8.0 (GOLib-Logging Module Integration)
  * @author     Pablo Dall'Oglio (Adianti Framework) / Madbuilder / Adianti v2.0 (Integration)
  * @copyright  Copyright (c) 2006 Adianti Solutions Ltd. (http://www.adianti.com.br)
  * @date       2025-08-21 17:20:00 (Integration Update)
