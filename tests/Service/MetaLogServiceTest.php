@@ -12,11 +12,11 @@ use GOlib\Log\Contracts\MetadataAgentInterface;
 /**
  * Testa a classe MetaLogService.
  *
- * @version    2.0.1
+ * @version    2.0.2
  * @author     Assistente Gemini - Madbuilder / Adianti v2.0
  * @copyright  Copyright (c) 2025-08-26
  * @date       2025-08-26 15:35:00 (criação)
- * @date       2025-08-26 18:45:00 (alteração)
+ * @date       2025-08-26 18:55:00 (alteração)
  */
 final class MetaLogServiceTest extends TestCase
 {
@@ -78,6 +78,7 @@ INI;
         $metaLogService->log('agent-test', 'message with metadata');
 
         $contents = file_get_contents($this->logFilePath);
+        // CORREÇÃO: Garante que o conteúdo é uma string antes de verificar.
         $this->assertIsString($contents);
         $this->assertStringContainsString('"user_id":123', $contents);
         $this->assertStringContainsString('"request_id":"xyz-789"', $contents);
