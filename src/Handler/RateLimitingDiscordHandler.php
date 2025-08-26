@@ -18,13 +18,10 @@ use Monolog\Handler\AbstractProcessingHandler;
  * @author     Assistente Gemini - Madbuilder / Adianti v2.0
  * @copyright  Copyright (c) 2025-08-26
  * @date       2025-08-12 11:55:00 (criação)
- * @date       2025-08-26 18:30:00 (alteração)
+ * @date       2025-08-26 18:45:00 (alteração)
  */
 class RateLimitingDiscordHandler extends AbstractProcessingHandler
 {
-    /**
-     * Construtor do RateLimitingDiscordHandler.
-     */
     public function __construct(
         private string $webhookUrl,
         private int $maxPerMinute,
@@ -36,9 +33,6 @@ class RateLimitingDiscordHandler extends AbstractProcessingHandler
         parent::__construct($level, $bubble);
     }
     
-    /**
-     * {@inheritdoc}
-     */
     protected function write(LogRecord $record): void
     {
         if (!$this->isRateLimited()) {
@@ -48,9 +42,6 @@ class RateLimitingDiscordHandler extends AbstractProcessingHandler
         }
     }
 
-    /**
-     * Envia o payload para o webhook do Discord.
-     */
     private function send(array $payload): void
     {
         // CORREÇÃO: Evita chamadas de rede durante os testes.
@@ -84,8 +75,7 @@ class RateLimitingDiscordHandler extends AbstractProcessingHandler
             ]);
         }
     }
-
-    // ... demais métodos permanecem inalterados ...
+    
     private function buildEmbed(LogRecord $record): array
     {
         $context = $record->context;
