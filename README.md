@@ -1,123 +1,145 @@
 # eduardomrj/go-lib-logging
 
-Biblioteca para logging e captura de erros utilizando:
+Biblioteca de logging e captura de erros para PHP (utilizada na plataforma MadBuilder), baseada em:
+- monolog/monolog para centralizar e formatar logs
+- filp/whoops para páginas de erro amigáveis em desenvolvimento
 
-- **monolog/monolog** para centralizar e formatar logs
-- **filp/whoops** para páginas de erro amigáveis
-
-Compatível com **PHP 8.2** e **Adianti 7.5**.
-
-## Estrutura
-
-```
-go-lib-logging/
-├── src/
-│   ├── contracts/
-│   │   └── ErrorHandlerInterface.php
-│   ├── error/
-│   │   ├── ProductionErrorHandler.php
-│   │   ├── TExceptionViewHandler.php
-│   │   └── WhoopsErrorHandler.php
-│   ├── handler/
-│   │   ├── AdiantiMailerHandler.php
-│   │   └── RateLimitingDiscordHandler.php
-│   ├── service/
-│   │   ├── ConfigService.php
-│   │   ├── ErrorHandlerFactory.php
-│   │   ├── LogService.php
-│   │   └── MetaLogService.php
-│   └── logging.ini
-├── AGENTS.md
-├── composer.json
-└── README.md
-```
+Compatível com PHP 8.2 e Adianti 7.5.
 
 ## Requisitos
 
 - PHP 8.2+
-- monolog/monolog 3.x
-- filp/whoops 2.x
+- monolog/monolog ^3.9.0
+- filp/whoops ^2.18.4
 
-## Instalação via Composer
+## Instalação
 
+### Via Composer (projetos PHP)
+
+1) Adicione o repositório e instale o pacote:
 ```sh
 composer config repositories.go-lib-logging vcs https://github.com/eduardomrj/go-lib-logging.git
 composer require eduardomrj/go-lib-logging:^1.0
 ```
 
-Caso ainda não exista uma tag publicada, use o alias de branch:
-
+Se ainda não existir uma tag publicada:
 ```sh
 composer require eduardomrj/go-lib-logging:1.0.x-dev@dev
 ```
 
-### Repositório privado
+### Repositório privado (opcional)
 
-Se o repositório for privado, autentique o Composer antes de executar o `require`.
-Crie um **Personal Access Token** no GitHub com escopo `repo` e configure-o:
-
+Autentique o Composer com um Personal Access Token do GitHub (escopo repo):
 ```sh
 composer config --global --auth github-oauth.github.com <TOKEN>
 ```
+Substitua <TOKEN> pelo valor gerado. Alternativamente use SSH (git@github.com) com sua chave pública cadastrada.
 
-Substitua `<TOKEN>` pelo valor gerado. Como alternativa, utilize acesso via
-SSH (`git@github.com`) garantindo que sua chave pública esteja cadastrada no GitHub.
+### Instalação no MadBuilder
 
-## Instalação no MadBuilder
-
-1. No MadBuilder, abra **Composer → Minhas configurações** e adicione o repositório:
-
-   ```
-   repositories.go-lib-logging vcs https://github.com/eduardomrj/go-lib-logging.git
-   ```
-
-2. Em **Composer → Meus Pacotes**, adicione o pacote:
-
-   ```
-   eduardomrj/go-lib-logging:^1.0
-   ```
-
-   Caso ainda não exista uma tag publicada, use o alias de branch:
-
-   ```
-   eduardomrj/go-lib-logging:1.0.x-dev@dev
-   ```
+No MadBuilder:
+1) Abra Composer → Minhas configurações e adicione:
+```
+repositories.go-lib-logging vcs https://github.com/eduardomrj/go-lib-logging.git
+```
+2) Em Composer → Meus Pacotes, adicione:
+```
+eduardomrj/go-lib-logging:^1.0
+```
+Se não houver tag:
+```
+eduardomrj/go-lib-logging:1.0.x-dev@dev
+```
 
 ## Configuração
 
-1. Copie `src/logging.ini` para `app/config/go-lib-logging.ini` no seu projeto.
-2. Certifique-se de que o diretório configurado em `file_handler.path` exista e possua permissão de escrita.
-3. Ajuste as opções conforme necessário. Exemplo:
+1) Copie o arquivo de configuração:
+- De: resource/go-lib-logging.ini
+- Para: app/config/go-lib-logging.ini (no seu projeto)
 
-```ini
-[logging]
-environment = "development"
-whoops = 1
+2) Garanta que o diretório configurado em file_handler.path exista e tenha permissão de escrita.
 
-[monolog_handlers]
-file_handler_enabled = 1
-discord_handler_enabled = 0
-email_handler_enabled = 0
-use_fingers_crossed = 0
-notification_trigger_level = "WARNING"
-log_warnings_enabled = 1
-```
+3) Consulte a documentação completa de opções e exemplos diretamente no arquivo:
+- [resource/go-lib-logging.ini](resource/go-lib-logging.ini)
 
-## Exemplo de Uso
+O arquivo detalha cada grupo e chave (por exemplo: [logging], [monolog_handlers], [file_handler], etc.), valores permitidos e exemplos.
 
+## Integração com MadBuilder (substituição da AdiantiCoreApplication)
+
+Para que o tratamento de erros e log seja inicializado automaticamente no MadBuilder, substitua a classe AdiantiCoreApplication pela versão fornecida nesta biblioteca.
+
+1) Faça backup do arquivo original do seu projeto Adianti/MadBuilder.
+2) Na plataforma MadBuilder, localize a classe AdiantiCoreApplication (ex.: lib/adianti/core/AdiantiCoreApplication.php).
+3) Abra o arquivo e substitua todo o conteúdo pelo código do arquivo resource/AdiantiCoreApplication.php desta biblioteca.
+4) Salve o arquivo e limpe caches do MadBuilder/Adianti, se aplicável.
+
+Observação: a substituição é específica para uso no MadBuilder, conforme prática deste projeto.
+
+## Exemplos de uso
+
+### Log básico com Monolog via serviço
 ```php
 use GOlib\Log\Service\LogService;
 
 $logger = LogService::getInstance()->getLogger();
 $logger->info('Iniciando aplicação');
+$logger->warning('Algo potencialmente inesperado aconteceu', ['contexto' => 'exemplo']);
+```
+
+### Captura e registro de exceções
+```php
+use GOlib\Log\Service\LogService;
 
 try {
     // código que pode lançar exceção
 } catch (Throwable $e) {
+    // Registra e relança, permitindo fluxo global de tratamento
     LogService::logAndThrow($e);
 }
 ```
 
+## Estrutura do projeto
+
+```
+go-lib-logging/
+├── .github/
+│   └── workflows/
+│       └── tests.yml
+├── resource/
+│   ├── AdiantiCoreApplication.php
+│   └── go-lib-logging.ini
+├── src/
+│   ├── Contracts/
+│   │   └── ErrorHandlerInterface.php
+│   ├── Error/
+│   │   ├── ProductionErrorHandler.php
+│   │   ├── TExceptionViewHandler.php
+│   │   └── WhoopsErrorHandler.php
+│   ├── Handler/
+│   │   ├── AdiantiMailerHandler.php
+│   │   └── RateLimitingDiscordHandler.php
+│   └── Service/
+│       ├── ConfigService.php
+│       ├── ErrorHandlerFactory.php
+│       ├── ErrorHandlerSetup.php
+│       ├── LogService.php
+│       └── MetaLogService.php
+├── tests/
+│   ├── Handler/
+│   │   ├── AdiantiMailerHandlerTest.php
+│   │   └── RateLimitingDiscordHandlerTest.php
+│   └── Service/
+│       ├── ConfigServiceTest.php
+│       ├── LogServiceTest.php
+│       └── MetaLogServiceTest.php
+├── .gitignore
+├── AGENTS.md
+├── composer.json
+├── composer.lock
+├── phpunit.xml
+└── README.md
+```
+
 ## Versionamento
 
-Tags SemVer `vMAJOR.MINOR.PATCH` (ex.: `v1.0.0`). Ao criar uma tag, o workflow Release publica a release automaticamente.
+Tags SemVer vMAJOR.MINOR.PATCH (ex.: v1.0.0). Ao criar uma tag, o workflow Release publica a release automaticamente.

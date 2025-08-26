@@ -2,85 +2,325 @@
 
 ## Sobre
 
-Este arquivo fornece orientações para **OpenAI Codex** e outros agentes de IA sobre como trabalhar com a biblioteca `go-lib-logging`. Descreve a estrutura do projeto, o arquivo de configuração `logging.ini` localizado em `/src` e boas práticas de uso.
+Este arquivo fornece orientações para **OpenAI Codex**, **GitHub Copilot** e outros agentes de IA sobre como trabalhar com a biblioteca `go-lib-logging`. Descreve a estrutura do projeto, configurações e boas práticas de desenvolvimento.
 
-## Estrutura do Projeto
+## Informações Técnicas Essenciais
 
-O código principal está localizado em `src/` e organizado da seguinte forma:
+### Dependências e Tecnologias
+- **Linguagem**: PHP (considere o composer.json como fonte da verdade da versão mínima)
+- **Logging Framework**: Monolog (ver versão exata no composer.json)
+- **Dependências principais**:
+  - `monolog/monolog`: ^3.0
+  - `filp/whoops`: ^2.15 (desenvolvimento)
+- **Padrões**: PSR-4, PSR-12, PSR-3 (LoggerInterface)
+- **Autoload**: Configurado via Composer com namespace `GoLibLogging\` (confirmar no composer.json)
 
-### Serviços
-- **`src/service/LogService.php`**: Classe singleton que configura o logger e adiciona handlers com base nas configurações do `logging.ini`. Habilita log em arquivo, notificações para Discord ou e-mail e aplica deduplication e fingers-crossed conforme definido nas configurações.
-- **`src/service/MetaLogService.php`**: Responsável por registrar no arquivo de log eventos sobre o envio de notificações, como sucesso ou falha.
+### Fonte da Verdade
+- Sempre trate o `composer.json` como referência oficial de versões, namespace e PSR-4. Evite “hardcode” de versões neste documento.
 
-### Handlers
-- **`src/handler/RateLimitingDiscordHandler.php`**: Handler que envia logs para um webhook do Discord. Verifica se o limite de mensagens por minuto foi excedido antes de enviar; caso contrário, registra a tentativa no meta-log.
-- **`src/handler/AdiantiMailerHandler.php`**: Handler que utiliza MailService::send para enviar e-mails com log; ideal para aplicações Adianti.
+## Estrutura do projeto
 
-## Configuração do logging.ini
+```
+go-lib-logging/
+├── .github/
+│   └── workflows/
+│       └── tests.yml
+├── resource/
+│   ├── AdiantiCoreApplication.php
+│   └── go-lib-logging.ini
+├── src/
+│   ├── Contracts/
+│   │   └── ErrorHandlerInterface.php
+│   ├── Error/
+│   │   ├── ProductionErrorHandler.php
+│   │   ├── TExceptionViewHandler.php
+│   │   └── WhoopsErrorHandler.php
+│   ├── Handler/
+│   │   ├── AdiantiMailerHandler.php
+│   │   └── RateLimitingDiscordHandler.php
+│   └── Service/
+│       ├── ConfigService.php
+│       ├── ErrorHandlerFactory.php
+│       ├── ErrorHandlerSetup.php
+│       ├── LogService.php
+│       └── MetaLogService.php
+├── tests/
+│   ├── Handler/
+│   │   ├── AdiantiMailerHandlerTest.php
+│   │   └── RateLimitingDiscordHandlerTest.php
+│   └── Service/
+│       ├── ConfigServiceTest.php
+│       ├── LogServiceTest.php
+│       └── MetaLogServiceTest.php
+├── .gitignore
+├── AGENTS.md
+├── composer.json
+├── composer.lock
+├── phpunit.xml
+└── README.md
+```
 
-O arquivo `src/logging.ini` define todas as configurações. Comentários começam com `;` e não são processados.
 
-### Seção [logging]
-- **`environment`**: Define o ambiente (`development` ou `production`) para ajustar o comportamento
-- **`whoops`**: Habilita (`1`) ou desabilita (`0`) a integração com o filp/whoops, que exibe erros detalhados em desenvolvimento
+### Referências rápidas (FQCN)
+- GoLibLogging\Service\LogService
+- GoLibLogging\Service\MetaLogService
+- GoLibLogging\Handler\RateLimitingDiscordHandler
+- GoLibLogging\Handler\AdiantiMailerHandler
 
-### Seção [monolog_handlers]
-- **`file_handler_enabled`**: Ativa o log em arquivo rotativo
-- **`discord_handler_enabled`**: Ativa o envio de notificações via Discord
-- **`email_handler_enabled`**: Ativa o envio de notificações via e-mail
-- **`use_fingers_crossed`**: 
-  - `1`: Acumula todos os logs até que ocorra um erro no nível especificado em `notification_trigger_level`, enviando um pacote único
-  - `0`: Cada erro gera notificação imediatamente
-- **`notification_trigger_level`**: Nível mínimo para disparar uma notificação
-  - Valores válidos: `DEBUG`, `INFO`, `NOTICE`, `WARNING`, `ERROR`, `CRITICAL`, `ALERT`, `EMERGENCY`
-- **`log_warnings_enabled`**: Se `1`, warnings e notices também são enviados
-- **`deduplication_time`**: Intervalo (em segundos) para agrupar mensagens duplicadas e evitar spam de notificações
+### Links relativos úteis
+- [src/service/LogService.php](src/service/LogService.php)
+- [src/service/MetaLogService.php](src/service/MetaLogService.php)
+- [src/handler/RateLimitingDiscordHandler.php](src/handler/RateLimitingDiscordHandler.php)
+- [src/handler/AdiantiMailerHandler.php](src/handler/AdiantiMailerHandler.php)
+- [src/logging.ini](src/logging.ini)
 
-### Seção [file_handler]
-- **`path`**: Caminho do arquivo de log rotativo (ex: `app/logs/monolog-logging.log`)
-- **`days`**: Quantidade de dias que os logs devem permanecer antes da rotação
+### Detalhamento dos Arquivos
 
-### Seção [discord_handler]
-- **`webhook_url`**: URL do webhook do Discord para onde as notificações serão enviadas
-- **`max_per_minute`**: Limite de mensagens por minuto para evitar bloqueio por rate limit. Se excedido, o handler registra a situação no meta-log
+#### Raiz do Projeto
+- **`.gitignore`**: Define quais arquivos/pastas o Git deve ignorar (vendor/, logs/, etc.)
+- **`composer.json`**: Configuração do Composer com namespace `GoLibLogging\`, autoload PSR-4, dependências
+- **`composer.lock`**: Versões exatas das dependências instaladas (commitado no repositório)
+- **`LICENSE`**: Licença MIT permitindo uso comercial e modificação
+- **`README.md`**: Documentação principal para desenvolvedores humanos
+- **`AGENTS.md`**: Este arquivo - guia específico para agentes de IA
 
-### Seção [email_handler]
-- **`to_address`**: Destinatário das notificações por e-mail
-- **`subject`**: Assunto do e-mail. Pode incluir placeholders como `{app_name}` e `{environment}` para substituição dinâmica
+#### Diretório `vendor/`
+Contém todas as dependências gerenciadas pelo Composer:
+- **`autoload.php`**: Arquivo principal de autoload
+- **`monolog/monolog`**: Biblioteca principal de logging
+- **`filp/whoops`**: Biblioteca para tratamento visual de erros em desenvolvimento
+- **`psr/log`**: Interface PSR-3 para logging
+- **`symfony/`**: Componentes do Symfony usados pelo Monolog
 
-## Recomendações de Uso
+#### Diretório `src/`
+**`src/service/`**:
+- **`LogService.php`**: Classe singleton principal que:
+  - Lê configurações do `logging.ini`
+  - Configura o logger Monolog
+  - Adiciona handlers baseado nas configurações
+  - Implementa PSR-3 LoggerInterface
+- **`MetaLogService.php`**: Registra eventos sobre o sistema de notificações (sucesso/falha de envios)
 
-### Configuração por Ambiente
-- **Desenvolvimento**: 
-  - Mantenha `whoops = 1` e `log_warnings_enabled = 1` para visualizar avisos detalhados
-- **Produção**: 
-  - Defina `whoops = 0` e ajuste `notification_trigger_level` para `ERROR` ou superior
+**`src/handler/`**:
+- **`RateLimitingDiscordHandler.php`**: Handler customizado que:
+  - Envia logs para webhook do Discord
+  - Controla rate limiting (mensagens por minuto)
+  - Registra tentativas no MetaLogService quando excede limite
+- **`AdiantiMailerHandler.php`**: Handler para envio de emails que:
+  - Integra com MailService do Adianti Framework
+  - Usa configurações SMTP do banco de dados
+  - Formata mensagens para email
 
-### Evitar Spam
-- Utilize `deduplication_time` para agrupar mensagens idênticas em um intervalo. Particularmente útil quando warnings são frequentes
-- Configure `max_per_minute` no Discord para limitar quantas notificações podem ser enviadas por minuto
+**Arquivos de configuração e exemplos**:
+- **`logging.ini`**: Arquivo principal de configuração com todas as seções e opções
+- **`example_usage.php`**: Exemplos práticos de como usar a biblioteca em diferentes cenários
 
-### Handlers de Email
-- **AdiantiMailerHandler**: Usa o MailService do Adianti para ler configurações de SMTP do banco de dados e enviar e-mails
+### Arquivos Gerados/Dinâmicos
+Estes arquivos não estão no repositório mas são criados durante o uso:
+- **`app/logs/`**: Diretório onde são criados os arquivos de log (configurável via logging.ini)
+- **Cache do Composer**: Arquivos temporários em `vendor/composer/`
 
-### Inserção de Contexto
-Ao registrar logs, inclua variáveis de contexto como arquivo, linha, e ID do usuário. Os handlers já formatam e apresentam essas informações nas mensagens de Discord e e-mail.
+### Arquivos de Configuração
+- **`composer.json`**: Define namespace `GoLibLogging\`, PSR-4 autoload, dependências
+- **`src/logging.ini`**: Configuração principal dos handlers e comportamentos
+- **`LICENSE`**: Licença MIT do projeto
+- **`README.md`**: Documentação para desenvolvedores humanos
 
-## Padrões de Estilo e Desenvolvimento
+### Diretórios Importantes
+- **`src/`**: Todo código fonte da biblioteca
+- **`vendor/`**: Dependências gerenciadas pelo Composer (**nunca modificar**)
+- **Raiz do projeto**: Arquivos de configuração e documentação
 
-- Este projeto segue **PSR-4/PSR-12** (padrões PHP)
-- Mantenha nomes de classes em StudlyCase
-- Use autoload definido em `composer.json`
-- **Não modifique arquivos dentro de `vendor/`**
-- Ajustes de configuração devem ser feitos **apenas no `logging.ini`**
-- Realize commit das alterações no `logging.ini`
-- Documente qualquer valor não-padrão neste `AGENTS.md` para que outros desenvolvedores e a Codex saibam como prosseguir
+## Configuração Detalhada do logging.ini
 
-## Referências
+### Exemplo Completo de Configuração
+```ini
+[logging]
+environment = development
+whoops = 1
 
-- [LogService.php](https://github.com/eduardomrj/go-lib-logging/blob/b845175ea94f3885b50f8f5c2ba2d8041c47475e/src/service/LogService.php)
-- [RateLimitingDiscordHandler.php](https://github.com/eduardomrj/go-lib-logging/blob/b845175ea94f3885b50f8f5c2ba2d8041c47475e/src/handler/RateLimitingDiscordHandler.php)
-- [AdiantiMailerHandler.php](https://github.com/eduardomrj/go-lib-logging/blob/b845175ea94f3885b50f8f5c2ba2d8041c47475e/src/handler/AdiantiMailerHandler.php)
+[monolog_handlers]
+file_handler_enabled = 1
+discord_handler_enabled = 1
+email_handler_enabled = 0
+use_fingers_crossed = 1
+notification_trigger_level = ERROR
+log_warnings_enabled = 1
+deduplication_time = 300
+
+[file_handler]
+path = app/logs/monolog-logging.log
+days = 30
+
+[discord_handler]
+webhook_url = https://discord.com/api/webhooks/...
+max_per_minute = 5
+
+[email_handler]
+to_address = admin@example.com
+subject = [{app_name}] Erro no ambiente {environment}
+```
+
+### Seções de Configuração
+
+#### [logging]
+- **`environment`**: `development|production` - Afeta comportamento de handlers
+- **`whoops`**: `0|1` - Integração com Whoops para debugging visual
+
+#### [monolog_handlers]
+- **`file_handler_enabled`**: `0|1` - Log rotativo em arquivo
+- **`discord_handler_enabled`**: `0|1` - Notificações Discord
+- **`email_handler_enabled`**: `0|1` - Notificações por email
+- **`use_fingers_crossed`**: `0|1` - Buffer logs até trigger level
+- **`notification_trigger_level`**: Níveis PSR-3 válidos
+- **`log_warnings_enabled`**: `0|1` - Incluir WARNING/NOTICE em notificações
+- **`deduplication_time`**: Segundos para agrupar mensagens idênticas
+
+#### [file_handler]
+- **`path`**: Caminho relativo ou absoluto para arquivo de log
+- **`days`**: Dias de retenção antes da rotação
+
+#### [discord_handler]
+- **`webhook_url`**: URL completa do webhook Discord
+- **`max_per_minute`**: Limite de mensagens/minuto (evita rate limiting)
+
+#### [email_handler]
+- **`to_address`**: Email destinatário
+- **`subject`**: Assunto com placeholders: `{app_name}`, `{environment}`
+
+### Glossário rápido de níveis (PSR-3)
+- DEBUG < INFO < NOTICE < WARNING < ERROR < CRITICAL < ALERT < EMERGENCY
+
+## Padrões de Código para IA
+
+### Instanciação do Logger
+```php
+use GoLibLogging\Service\LogService;
+
+// CORRETO: Sempre usar getInstance()
+$logger = LogService::getInstance();
+
+// INCORRETO: Não instanciar diretamente
+// $logger = new LogService(); // ❌
+```
+
+### Registro de Logs com Contexto
+```php
+// Estrutura recomendada para contexto
+$context = [
+    'user_id' => $userId,
+    'file' => __FILE__,
+    'line' => __LINE__,
+    'method' => __METHOD__,
+    'additional_data' => $data
+];
+
+$logger->error('Mensagem do erro', $context);
+$logger->warning('Aviso importante', $context);
+$logger->info('Informação relevante', $context);
+```
+
+### Tratamento de Exceções
+```php
+try {
+    // código que pode gerar exceção
+} catch (Exception $e) {
+    $logger->error('Erro capturado: ' . $e->getMessage(), [
+        'exception' => $e,
+        'trace' => $e->getTraceAsString(),
+        'file' => $e->getFile(),
+        'line' => $e->getLine()
+    ]);
+}
+```
+
+## Diretrizes para IA
+
+### ✅ Boas Práticas
+1. **Sempre verificar se o LogService está configurado** antes de sugerir uso
+2. **Incluir contexto relevante** em todos os logs gerados
+3. **Usar níveis apropriados**: ERROR para erros, WARNING para avisos, INFO para informações
+4. **Seguir PSR-3** para compatibilidade com outras bibliotecas
+5. **Não hardcoded configurações** - sempre usar logging.ini
+
+### ❌ Evitar
+1. **Não instanciar LogService diretamente** - sempre usar singleton
+2. **Não modificar vendor/** - alterações devem ser no src/
+3. **Não criar handlers customizados** sem seguir padrão existente
+4. **Não ignorar rate limiting** em handlers de notificação
+5. **Não fazer logs excessivos** em loops ou operações frequentes
+
+### Checklist rápido para IA
+- Validar versões e namespace no composer.json
+- Não inserir segredos reais (webhooks, SMTP) em commits
+- Usar sempre LogService::getInstance()
+- Incluir contexto mínimo: file, line, user_id (se houver)
+- Conferir `use_fingers_crossed` e `notification_trigger_level` antes de sugerir handlers de notificação
+- Respeitar `deduplication_time` e `max_per_minute`
+
+### Cenários Comuns de Uso
+1. **Debugging**: Use DEBUG/INFO com contexto detalhado
+2. **Monitoramento**: Use WARNING para situações anômalas
+3. **Alertas críticos**: Use ERROR/CRITICAL para falhas que requerem atenção
+4. **Integração com Adianti**: Prefira AdiantiMailerHandler para emails
+
+## Segurança e Gestão de Segredos
+- Nunca comitar `discord_handler.webhook_url` real; use placeholders e variáveis de ambiente quando possível.
+- Para SMTP, mantenha credenciais fora do VCS (ex.: vault, env, store seguro).
+- Revogue webhooks expostos e rotacione segredos comprometidos.
+- Se precisar registrar configs em logs, masque segredos (ex.: `xxxx`).
+
+## Troubleshooting para IA
+
+### Problemas Comuns
+1. **Logger não inicializa**: Verificar se logging.ini existe e é válido
+2. **Notificações não chegam**: Verificar configurações de webhook/email
+3. **Rate limiting**: Ajustar max_per_minute ou implementar buffer
+4. **Logs duplicados**: Configurar deduplication_time adequadamente
+
+### Validação de Configuração
+```php
+// Exemplo para validar se logging está funcionando
+if (!LogService::getInstance()) {
+    throw new Exception('LogService não pôde ser inicializado');
+}
+```
+
+### Limitações conhecidas
+- Rate limit do Discord calculado por minuto; bursts acima do limite serão ignorados e registrados no meta-log.
+- Deduplicação agrupa mensagens idênticas durante `deduplication_time` e pode adiar notificações.
+- `whoops` deve permanecer ativo apenas em desenvolvimento.
+- Caminhos relativos do `file_handler.path` dependem do diretório de execução do processo PHP.
+
+## Integração com Frameworks
+
+### Adianti Framework
+- Use `AdiantiMailerHandler` para aproveitar configurações SMTP existentes
+- Configure path relativo a partir da raiz do projeto Adianti
+- Considere usar TTransaction para logs de banco de dados
+
+### Frameworks Genéricos
+- LogService implementa PSR-3, compatível com qualquer framework PSR
+- Use dependency injection quando possível
+- Configure path absoluto ou relativo conforme estrutura do projeto
+
+## Exemplos de Integração
+
+Ver `src/example_usage.php` para exemplos práticos de:
+- Configuração básica
+- Logging com contexto
+- Tratamento de exceções
+- Integração com diferentes ambientes
+
+### Comandos rápidos (execução local)
+```bash
+composer install
+php -v
+php src/example_usage.php
+# Atualizar a estrutura de pastas deste arquivo
+php scripts/update-project-structure.php
+```
 
 ---
-*Que a automação esteja com você!*
+
+*Este guia é otimizado para assistir IA LLMs na geração de código consistente e eficiente com go-lib-logging.*
