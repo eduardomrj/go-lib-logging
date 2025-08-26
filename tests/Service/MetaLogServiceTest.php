@@ -12,10 +12,11 @@ use GOlib\Log\Contracts\MetadataAgentInterface;
 /**
  * Testa a classe MetaLogService.
  *
- * @version    2.0.0
+ * @version    2.0.1
  * @author     Assistente Gemini - Madbuilder / Adianti v2.0
  * @copyright  Copyright (c) 2025-08-26
  * @date       2025-08-26 15:35:00 (criação)
+ * @date       2025-08-26 18:30:00 (alteração)
  */
 final class MetaLogServiceTest extends TestCase
 {
@@ -31,7 +32,11 @@ final class MetaLogServiceTest extends TestCase
         $this->logFilePath = sys_get_temp_dir() . '/meta-test.log';
         $this->testIniPath = sys_get_temp_dir() . '/meta-test-config.ini';
 
+        // CORREÇÃO: Adicionada a seção [monolog_handlers] que o serviço espera.
         $content = <<<INI
+[monolog_handlers]
+file_handler_enabled = 1
+
 [file_handler]
 enabled = 1
 path = "{$this->logFilePath}"
@@ -100,7 +105,7 @@ INI;
     {
         // Cria uma nova configuração com o handler desabilitado
         $disabledIniPath = sys_get_temp_dir() . '/disabled-config.ini';
-        file_put_contents($disabledIniPath, '[file_handler]\nenabled = 0');
+        file_put_contents($disabledIniPath, "[monolog_handlers]\nfile_handler_enabled = 0");
         $disabledConfigService = new ConfigService($disabledIniPath);
 
         $metaLogService = new MetaLogService($disabledConfigService);
