@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace GOlib\Log\Service;
 
-use Monolog\Formatter\LineFormatter;
-use Monolog\Handler\RotatingFileHandler;
 use Monolog\Level;
 use Monolog\Logger;
+use Monolog\Formatter\LineFormatter;
+use Monolog\Handler\RotatingFileHandler;
 
 /**
  * Serviço de Meta-Log
@@ -33,8 +33,18 @@ class MetaLogService
             
             // Pega as configurações do file_handler do nosso .ini
             $fileConfig = ConfigService::get('file_handler', null, []);
-            $logPath = $fileConfig['path'] ?? 'app/logs/serket.log';
+            $logPath = $fileConfig['path'] ?? GO_LIB_LOG_DEFAULT_FILE;
             $logDays = (int) ($fileConfig['days'] ?? 14);
+            $dir = dirname($logPath);
+
+            if (!is_dir($dir)) {
+                @mkdir($dir, 0775, true);
+            }
+            if (!is_dir($dir) || !is_writable($dir)) {
+                error_log('[go-lib-logging] Diretório de log inacessível: ' . $dir);
+                // fallback para o temp do sistema
+                $logPath = GO_LIB_LOG_DEFAULT_FILE;
+            }
 
             $fileHandler = new RotatingFileHandler($logPath, $logDays, Level::Info);
             $fileHandler->setFormatter(new LineFormatter("[%datetime%] %channel%.%level_name%: %message% %context% %extra%\n"));

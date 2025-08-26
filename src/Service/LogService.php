@@ -4,17 +4,17 @@ declare(strict_types=1);
 
 namespace GOlib\Log\Service;
 
-use GOlib\Log\Handler\AdiantiMailerHandler;
-use GOlib\Log\Handler\RateLimitingDiscordHandler;
-use Monolog\Formatter\LineFormatter;
-use Monolog\Handler\DeduplicationHandler;
-use Monolog\Handler\FingersCrossedHandler;
-use Monolog\Handler\GroupHandler;
-use Monolog\Handler\RotatingFileHandler;
+use Throwable;
 use Monolog\Level;
 use Monolog\Logger;
+use Monolog\Handler\GroupHandler;
 use Monolog\Processor\WebProcessor;
-use Throwable;
+use Monolog\Formatter\LineFormatter;
+use Monolog\Handler\RotatingFileHandler;
+use Monolog\Handler\DeduplicationHandler;
+use Monolog\Handler\FingersCrossedHandler;
+use GOlib\Log\Handler\AdiantiMailerHandler;
+use GOlib\Log\Handler\RateLimitingDiscordHandler;
 
 /**
  * Serviço de Log (Singleton)
@@ -110,11 +110,18 @@ class LogService
     private function addFileHandler(LineFormatter $formatter): void
     {
         $fileConfig = ConfigService::get('file_handler', null, []);
-        $logPath = $fileConfig['path'] ?? 'app/logs/serket.log';
+        $logPath = $fileConfig['path'] ?? GO_LIB_LOG_DEFAULT_FILE;
         $logDays = (int) ($fileConfig['days'] ?? 14);
         $dir = dirname($logPath);
-        if (!is_dir($dir) || !is_writable($dir)) {
-            error_log('[go-lib-logging] Diretório de log inacessível: ' . $dir);
+
+        if (!is_dir($dir)) {
+            if (!@mkdir($dir, 0775, true) && !is_dir($dir)) {
+                error_log('[go-lib-logging] Falha ao criar diretório de log: ' . $dir);
+                return;
+            }
+        }
+        if (!is_writable($dir)) {
+            error_log('[go-lib-logging] Diretório de log sem permissão de escrita: ' . $dir);
             return;
         }
 

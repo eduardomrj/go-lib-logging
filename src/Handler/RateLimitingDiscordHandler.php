@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace GOlib\Log\Handler;
 
-use Monolog\Handler\AbstractProcessingHandler;
 use Monolog\Level;
 use Monolog\LogRecord;
-use Adianti\Registry\TSession; // CORREÇÃO APLICADA
-use GOlib\Log\Service\MetaLogService;
+use Adianti\Registry\TSession;
+use GOlib\Log\Service\MetaLogService; // CORREÇÃO APLICADA
+use Monolog\Handler\AbstractProcessingHandler;
 
 /**
  * Handler customizado do Monolog para enviar logs para o Discord com Rate Limit.
@@ -28,7 +28,7 @@ class RateLimitingDiscordHandler extends AbstractProcessingHandler
     {
         $this->webhookUrl = $webhookUrl;
         $this->maxPerMinute = $maxPerMinute;
-        $this->cacheFile = 'tmp/discord_log_timestamps.cache';
+        $this->cacheFile = rtrim(sys_get_temp_dir(), DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . 'discord_log_timestamps.cache';
         parent::__construct($level, $bubble);
     }
     

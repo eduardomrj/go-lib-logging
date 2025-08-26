@@ -4,6 +4,13 @@ declare(strict_types=1);
 
 namespace GOlib\Log\Service;
 
+if (!defined('GO_LIB_LOG_DEFAULT_FILE')) {
+    define(
+        'GO_LIB_LOG_DEFAULT_FILE',
+        rtrim(sys_get_temp_dir(), DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . 'go-lib-logging.log'
+    );
+}
+
 /**
  * Serviço para Acesso Centralizado às Configurações
  * * @version    15.0.0
