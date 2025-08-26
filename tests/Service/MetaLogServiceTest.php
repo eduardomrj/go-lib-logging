@@ -4,51 +4,110 @@ declare(strict_types=1);
 
 namespace Tests\Service;
 
-use GOlib\Log\Service\MetaLogService;
-use GOlib\Log\Service\ConfigService;
 use PHPUnit\Framework\TestCase;
-use ReflectionClass;
+use GOlib\Log\Service\ConfigService;
+use GOlib\Log\Service\MetaLogService;
+use GOlib\Log\Contracts\MetadataAgentInterface;
 
+/**
+ * Testa a classe MetaLogService.
+ *
+ * @version    2.0.0
+ * @author     Assistente Gemini - Madbuilder / Adianti v2.0
+ * @copyright  Copyright (c) 2025-08-26
+ * @date       2025-08-26 15:35:00 (criação)
+ */
 final class MetaLogServiceTest extends TestCase
 {
-    private string $logFileBase;
+    private string $logFilePath;
+    private string $testIniPath;
+    private ConfigService $configService;
 
+    /**
+     * Configura o ambiente de teste.
+     */
     protected function setUp(): void
     {
-        $this->logFileBase = sys_get_temp_dir() . '/meta-log';
-        $ref = new ReflectionClass(ConfigService::class);
-        $prop = $ref->getProperty('config');
-        $prop->setAccessible(true);
-        $prop->setValue(null, [
-            'monolog_handlers' => ['file_handler_enabled' => true],
-            'file_handler' => ['path' => $this->logFileBase . '.log', 'days' => 1],
-        ]);
+        $this->logFilePath = sys_get_temp_dir() . '/meta-test.log';
+        $this->testIniPath = sys_get_temp_dir() . '/meta-test-config.ini';
+
+        $content = <<<INI
+[file_handler]
+enabled = 1
+path = "{$this->logFilePath}"
+days = 1
+INI;
+        file_put_contents($this->testIniPath, $content);
+
+        $this->configService = new ConfigService($this->testIniPath);
     }
 
+    /**
+     * Limpa o ambiente de teste.
+     */
     protected function tearDown(): void
     {
-        foreach (glob($this->logFileBase . '*') as $file) {
-            unlink($file);
+        if (file_exists($this->testIniPath)) {
+            unlink($this->testIniPath);
         }
-
-        $ref = new ReflectionClass(MetaLogService::class);
-        $prop = $ref->getProperty('instance');
-        $prop->setAccessible(true);
-        $prop->setValue(null, null);
-
-        $refConfig = new ReflectionClass(ConfigService::class);
-        $propConfig = $refConfig->getProperty('config');
-        $propConfig->setAccessible(true);
-        $propConfig->setValue(null, null);
+        if (file_exists($this->logFilePath)) {
+            unlink($this->logFilePath);
+        }
     }
 
-    public function testLogCreatesFile(): void
+    /**
+     * Testa se o log básico funciona e cria o arquivo de log.
+     */
+    public function testLogCreatesFileWithCorrectContent(): void
     {
-        MetaLogService::log('test', 'example message');
+        $metaLogService = new MetaLogService($this->configService);
+        $metaLogService->log('test-channel', 'test message');
 
-        $files = glob($this->logFileBase . '*');
-        $this->assertNotEmpty($files);
-        $contents = file_get_contents($files[0]);
-        $this->assertStringContainsString('[test] example message', $contents);
+        $this->assertFileExists($this->logFilePath);
+
+        $contents = file_get_contents($this->logFilePath);
+        $this->assertStringContainsString('[test-channel] test message', $contents);
+    }
+
+    /**
+     * Testa se o serviço anexa corretamente os metadados dos agentes.
+     */
+    public function testLogIncludesMetadataFromAgents(): void
+    {
+        $metaLogService = new MetaLogService($this->configService);
+
+        // Cria e adiciona um agente de metadados mock
+        $agent = new class implements MetadataAgentInterface {
+            public function getMetadata(): array
+            {
+                return ['user_id' => 123, 'request_id' => 'xyz-789'];
+            }
+        };
+        $metaLogService->addAgent($agent);
+
+        $metaLogService->log('agent-test', 'message with metadata');
+
+        $contents = file_get_contents($this->logFilePath);
+        // Verifica se o contexto no log contém os metadados do agente em formato JSON
+        $this->assertStringContainsString('"user_id":123', $contents);
+        $this->assertStringContainsString('"request_id":"xyz-789"', $contents);
+    }
+
+    /**
+     * Testa se o log não é escrito quando o file_handler está desabilitado.
+     */
+    public function testLogDoesNotWriteWhenDisabled(): void
+    {
+        // Cria uma nova configuração com o handler desabilitado
+        $disabledIniPath = sys_get_temp_dir() . '/disabled-config.ini';
+        file_put_contents($disabledIniPath, '[file_handler]\nenabled = 0');
+        $disabledConfigService = new ConfigService($disabledIniPath);
+
+        $metaLogService = new MetaLogService($disabledConfigService);
+        $metaLogService->log('disabled-test', 'should not be logged');
+
+        $this->assertFileDoesNotExist($this->logFilePath);
+
+        unlink($disabledIniPath);
     }
 }

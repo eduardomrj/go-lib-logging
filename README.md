@@ -1,145 +1,110 @@
-# eduardomrj/go-lib-logging
+# **eduardomrj/go-lib-logging**
 
-Biblioteca de logging e captura de erros para PHP (utilizada na plataforma MadBuilder), baseada em:
-- monolog/monolog para centralizar e formatar logs
-- filp/whoops para páginas de erro amigáveis em desenvolvimento
+Biblioteca avançada de logging e captura de erros para PHP 8.2+, otimizada para o ecossistema MadBuilder/Adianti 7.5. Utiliza **Monolog** para um sistema de log robusto e **Whoops** para páginas de erro amigáveis em desenvolvimento.
 
-Compatível com PHP 8.2 e Adianti 7.5.
+## **Arquitetura (v2.0+)**
 
-## Requisitos
+A versão 2.0 da biblioteca foi completamente refatorada para adotar os princípios de **Injeção de Dependência (DI)** e **Inversão de Controle (IoC)**. Isso elimina o uso de métodos estáticos e singletons, resultando em um código mais desacoplado, testável e aderente aos padrões SOLID.
 
-- PHP 8.2+
-- monolog/monolog ^3.9.0
-- filp/whoops ^2.18.4
+## **Requisitos**
 
-## Instalação
+* PHP 8.2+  
+* monolog/monolog ^3.9.0  
+* filp/whoops ^2.18.4
 
-### Via Composer (projetos PHP)
+## **Instalação no MadBuilder**
 
-1) Adicione o repositório e instale o pacote:
-```sh
-composer config repositories.go-lib-logging vcs https://github.com/eduardomrj/go-lib-logging.git
-composer require eduardomrj/go-lib-logging:^1.0
-```
+1. **Adicionar Repositório**: Em Composer → Minhas configurações, adicione:  
+   repositories.go-lib-logging vcs https://github.com/eduardomrj/go-lib-logging.git
 
-Se ainda não existir uma tag publicada:
-```sh
-composer require eduardomrj/go-lib-logging:1.0.x-dev@dev
-```
+2. **Adicionar Pacote**: Em Composer → Meus Pacotes, adicione a versão desejada:  
+   eduardomrj/go-lib-logging:^2.0
 
-### Repositório privado (opcional)
+## **Configuração**
 
-Autentique o Composer com um Personal Access Token do GitHub (escopo repo):
-```sh
-composer config --global --auth github-oauth.github.com <TOKEN>
-```
-Substitua <TOKEN> pelo valor gerado. Alternativamente use SSH (git@github.com) com sua chave pública cadastrada.
+1. **Copie o arquivo de configuração**:  
+   * De: vendor/eduardomrj/go-lib-logging/resource/go-lib-logging.ini  
+   * Para: app/config/go-lib-logging.ini no seu projeto.  
+2. **Personalize o .ini**: Ajuste as configurações conforme os cenários descritos no [Manual de Utilização](https://www.google.com/search?q=resource/MANUAL.md). Garanta que o diretório de log (files/logs/) tenha permissão de escrita.  
+3. **Substitua a AdiantiCoreApplication**:  
+   * Faça um backup do arquivo lib/adianti/core/AdiantiCoreApplication.php do seu projeto.  
+   * Substitua todo o conteúdo dele pelo código fornecido em:  
+     vendor/eduardomrj/go-lib-logging/resource/AdiantiCoreApplication.php.
 
-### Instalação no MadBuilder
+## **Como Usar (v2.0+)**
 
-No MadBuilder:
-1) Abra Composer → Minhas configurações e adicione:
-```
-repositories.go-lib-logging vcs https://github.com/eduardomrj/go-lib-logging.git
-```
-2) Em Composer → Meus Pacotes, adicione:
-```
-eduardomrj/go-lib-logging:^1.0
-```
-Se não houver tag:
-```
-eduardomrj/go-lib-logging:1.0.x-dev@dev
-```
+A nova versão centraliza toda a inicialização. Após seguir os passos de configuração, a biblioteca é **automaticamente ativada** pelo AdiantiCoreApplication. Você não precisa instanciar os serviços manualmente.
 
-## Configuração
+Para registrar logs em suas classes, use o serviço de log do Adianti, que agora será potencializado pela nossa biblioteca.
 
-1) Copie o arquivo de configuração:
-- De: resource/go-lib-logging.ini
-- Para: app/config/go-lib-logging.ini (no seu projeto)
+### **Exemplo de Log em uma Classe de Controle**
 
-2) Garanta que o diretório configurado em file_handler.path exista e tenha permissão de escrita.
+\<?php
 
-3) Consulte a documentação completa de opções e exemplos diretamente no arquivo:
-- [resource/go-lib-logging.ini](resource/go-lib-logging.ini)
+use Adianti\\Control\\TPage;  
+use Adianti\\Log\\TLogger;
 
-O arquivo detalha cada grupo e chave (por exemplo: [logging], [monolog_handlers], [file_handler], etc.), valores permitidos e exemplos.
+class MinhaClasseControle extends TPage  
+{  
+    public function \_\_construct()  
+    {  
+        parent::\_\_construct();
 
-## Integração com MadBuilder (substituição da AdiantiCoreApplication)
+        try {  
+            // Seu código aqui...  
+              
+            // Registrando um log de informação  
+            TLogger::log('INFO', 'A classe MinhaClasseControle foi acessada.');
 
-Para que o tratamento de erros e log seja inicializado automaticamente no MadBuilder, substitua a classe AdiantiCoreApplication pela versão fornecida nesta biblioteca.
+            // Simulando uma operação que pode falhar  
+            if (empty($variavelInexistente)) {  
+                throw new \\Exception('Ocorreu um erro de negócio\!');  
+            }
 
-1) Faça backup do arquivo original do seu projeto Adianti/MadBuilder.
-2) Na plataforma MadBuilder, localize a classe AdiantiCoreApplication (ex.: lib/adianti/core/AdiantiCoreApplication.php).
-3) Abra o arquivo e substitua todo o conteúdo pelo código do arquivo resource/AdiantiCoreApplication.php desta biblioteca.
-4) Salve o arquivo e limpe caches do MadBuilder/Adianti, se aplicável.
-
-Observação: a substituição é específica para uso no MadBuilder, conforme prática deste projeto.
-
-## Exemplos de uso
-
-### Log básico com Monolog via serviço
-```php
-use GOlib\Log\Service\LogService;
-
-$logger = LogService::getInstance()->getLogger();
-$logger->info('Iniciando aplicação');
-$logger->warning('Algo potencialmente inesperado aconteceu', ['contexto' => 'exemplo']);
-```
-
-### Captura e registro de exceções
-```php
-use GOlib\Log\Service\LogService;
-
-try {
-    // código que pode lançar exceção
-} catch (Throwable $e) {
-    // Registra e relança, permitindo fluxo global de tratamento
-    LogService::logAndThrow($e);
+        } catch (\\Throwable $e) {  
+            // A exceção será capturada automaticamente pelo ErrorHandlerSetup  
+            // e registrada conforme as regras do seu .ini.  
+            // Você só precisa relançá-la para que o Adianti a exiba.  
+            throw $e;  
+        }  
+    }  
 }
-```
 
-## Estrutura do projeto
+Qualquer erro ou exceção não capturada em sua aplicação será automaticamente processado pelo ErrorHandlerSetup, que irá:
 
-```
-go-lib-logging/
-├── .github/
-│   └── workflows/
-│       └── tests.yml
-├── resource/
-│   ├── AdiantiCoreApplication.php
-│   └── go-lib-logging.ini
-├── src/
-│   ├── Contracts/
-│   │   └── ErrorHandlerInterface.php
-│   ├── Error/
-│   │   ├── ProductionErrorHandler.php
-│   │   ├── TExceptionViewHandler.php
-│   │   └── WhoopsErrorHandler.php
-│   ├── Handler/
-│   │   ├── AdiantiMailerHandler.php
-│   │   └── RateLimitingDiscordHandler.php
-│   └── Service/
-│       ├── ConfigService.php
-│       ├── ErrorHandlerFactory.php
-│       ├── ErrorHandlerSetup.php
-│       ├── LogService.php
-│       └── MetaLogService.php
-├── tests/
-│   ├── Handler/
-│   │   ├── AdiantiMailerHandlerTest.php
-│   │   └── RateLimitingDiscordHandlerTest.php
-│   └── Service/
-│       ├── ConfigServiceTest.php
-│       ├── LogServiceTest.php
-│       └── MetaLogServiceTest.php
-├── .gitignore
-├── AGENTS.md
-├── composer.json
-├── composer.lock
-├── phpunit.xml
-└── README.md
-```
+1. **Registrar o erro** em todos os canais configurados (arquivo, Discord, etc.).  
+2. **Exibir uma tela de erro** apropriada para o ambiente (Whoops em desenvolvimento, mensagem genérica em produção).
 
-## Versionamento
+## **Estrutura do Projeto (v2.0+)**
 
-Tags SemVer vMAJOR.MINOR.PATCH (ex.: v1.0.0). Ao criar uma tag, o workflow Release publica a release automaticamente.
+go-lib-logging/  
+├── resource/  
+│   ├── AdiantiCoreApplication.php  
+│   ├── go-lib-logging.ini  
+│   └── MANUAL.md  
+├── src/  
+│   ├── Cache/  
+│   │   └── FileCache.php  
+│   ├── Contracts/  
+│   │   ├── CacheInterface.php  
+│   │   ├── ErrorHandlerInterface.php  
+│   │   └── MetadataAgentInterface.php  
+│   ├── Error/  
+│   │   ├── ProductionErrorHandler.php  
+│   │   ├── TExceptionViewHandler.php  
+│   │   └── WhoopsErrorHandler.php  
+│   ├── Handler/  
+│   │   ├── AdiantiMailerHandler.php  
+│   │   └── RateLimitingDiscordHandler.php  
+│   └── Service/  
+│       ├── ConfigService.php  
+│       ├── ErrorHandlerFactory.php  
+│       ├── ErrorHandlerSetup.php  
+│       ├── LogService.php  
+│       └── MetaLogService.php  
+├── tests/  
+│   \# ... (testes unitários para cada classe)  
+├── .gitignore  
+├── AGENTS.md  
+├── composer.json  
+└── README.md  

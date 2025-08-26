@@ -4,34 +4,47 @@ declare(strict_types=1);
 
 namespace GOlib\Log\Handler;
 
-use Monolog\Handler\AbstractProcessingHandler;
+use Exception;
+use MailService;
 use Monolog\Level;
 use Monolog\LogRecord;
 use Adianti\Registry\TSession;
 use GOlib\Log\Service\MetaLogService;
-use Exception;
-use MailService; // Usa a classe MailService do template
+use Monolog\Handler\AbstractProcessingHandler; // Usa a classe MailService do template Adianti
 
 /**
- * Handler para enviar logs por e-mail usando a classe MailService do template.
- * * @version    21.0.0
- * @author     Madbuilder / Adianti v2.0
- * @copyright  Copyright (c) 2025-08-12
- * @date       2025-08-12 13:54:00
- * @description Formata o log como um e-mail HTML e o envia usando as configurações de SMTP do sistema.
+ * Handler para enviar logs por e-mail usando a classe MailService.
+ *
+ * Formata o log como um e-mail HTML e o envia usando as configurações de
+ * SMTP do sistema, registrando o status do envio via MetaLogService.
+ *
+ * @version    22.0.0
+ * @author     Assistente Gemini - Madbuilder / Adianti v2.0
+ * @copyright  Copyright (c) 2025-08-26
+ * @date       2025-08-12 13:54:00 (criação)
+ * @date       2025-08-26 10:45:00 (alteração)
  */
 class AdiantiMailerHandler extends AbstractProcessingHandler
 {
-    private array $config;
-
-    public function __construct(array $config, int|Level $level = Level::Debug, bool $bubble = true)
-    {
-        $this->config = $config;
+    /**
+     * Construtor do AdiantiMailerHandler.
+     *
+     * @param array $config Configurações específicas do handler (to_address, subject).
+     * @param MetaLogService $metaLogService Serviço para registrar o status do envio.
+     * @param int|Level $level O nível mínimo de log que este handler irá processar.
+     * @param bool $bubble Se os registros devem ou não ser propagados para outros handlers.
+     */
+    public function __construct(
+        private array $config,
+        private MetaLogService $metaLogService,
+        int|Level $level = Level::Debug,
+        bool $bubble = true
+    ) {
         parent::__construct($level, $bubble);
     }
 
     /**
-     * Envia o e-mail com o log formatado.
+     * {@inheritdoc}
      */
     protected function write(LogRecord $record): void
     {
@@ -43,11 +56,11 @@ class AdiantiMailerHandler extends AbstractProcessingHandler
             // Utiliza o MailService, que já busca as configurações de SMTP do banco de dados.
             MailService::send($to, $subject, $body, 'html');
 
-            MetaLogService::log('email', 'Notificação enviada com sucesso via MailService.', ['to' => $to]);
+            $this->metaLogService->log('email', 'Notificação enviada com sucesso via MailService.', ['to' => $to]);
 
         } catch (Exception $e) {
-            // Captura qualquer exceção que possa ocorrer durante a busca de preferências ou envio.
-            MetaLogService::log('email', 'Falha ao enviar notificação via MailService.', [
+            // Captura qualquer exceção e a registra usando o meta-log.
+            $this->metaLogService->log('email', 'Falha ao enviar notificação via MailService.', [
                 'to' => $this->config['to_address'],
                 'error' => $e->getMessage()
             ]);
@@ -56,6 +69,9 @@ class AdiantiMailerHandler extends AbstractProcessingHandler
 
     /**
      * Constrói o corpo do e-mail em formato HTML.
+     *
+     * @param LogRecord $record O registro de log.
+     * @return string O corpo do e-mail em HTML.
      */
     private function buildHtmlBody(LogRecord $record): string
     {
@@ -104,6 +120,9 @@ class AdiantiMailerHandler extends AbstractProcessingHandler
 
     /**
      * Retorna uma cor em formato hexadecimal baseada no nível do log.
+     *
+     * @param Level $level O nível do log.
+     * @return string A cor em hexadecimal.
      */
     private function getLevelColor(Level $level): string
     {

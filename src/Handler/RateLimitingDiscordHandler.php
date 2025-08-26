@@ -7,40 +7,62 @@ namespace GOlib\Log\Handler;
 use Monolog\Level;
 use Monolog\LogRecord;
 use Adianti\Registry\TSession;
-use GOlib\Log\Service\MetaLogService; // CORREÇÃO APLICADA
+use GOlib\Log\Service\MetaLogService;
+use GOlib\Log\Contracts\CacheInterface;
 use Monolog\Handler\AbstractProcessingHandler;
 
 /**
  * Handler customizado do Monolog para enviar logs para o Discord com Rate Limit.
- * * @version    17.0.0
- * @author     Madbuilder / Adianti v2.0
- * @copyright  Copyright (c) 2025-08-12
- * @date       2025-08-12 11:55:00
- * @description Envia mensagens formatadas e registra o status do envio no log de arquivo.
+ *
+ * Envia mensagens formatadas e registra o status do envio no log de arquivo.
+ * Utiliza uma implementação de CacheInterface para controlar o rate limit.
+ *
+ * @version    18.0.0
+ * @author     Assistente Gemini - Madbuilder / Adianti v2.0
+ * @copyright  Copyright (c) 2025-08-26
+ * @date       2025-08-12 11:55:00 (criação)
+ * @date       2025-08-26 10:50:00 (alteração)
  */
 class RateLimitingDiscordHandler extends AbstractProcessingHandler
 {
-    private string $webhookUrl;
-    private int $maxPerMinute;
-    private string $cacheFile;
-
-    public function __construct(string $webhookUrl, int $maxPerMinute, int|Level $level = Level::Debug, bool $bubble = true)
-    {
-        $this->webhookUrl = $webhookUrl;
-        $this->maxPerMinute = $maxPerMinute;
-        $this->cacheFile = rtrim(sys_get_temp_dir(), DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . 'discord_log_timestamps.cache';
+    /**
+     * Construtor do RateLimitingDiscordHandler.
+     *
+     * @param string $webhookUrl A URL do webhook do Discord.
+     * @param int $maxPerMinute O número máximo de mensagens permitidas por minuto.
+     * @param CacheInterface $cache Serviço de cache para controlar o rate limit.
+     * @param MetaLogService $metaLogService Serviço para registrar o status do envio.
+     * @param int|Level $level O nível mínimo de log que este handler irá processar.
+     * @param bool $bubble Se os registros devem ou não ser propagados para outros handlers.
+     */
+    public function __construct(
+        private string $webhookUrl,
+        private int $maxPerMinute,
+        private CacheInterface $cache,
+        private MetaLogService $metaLogService,
+        int|Level $level = Level::Debug,
+        bool $bubble = true
+    ) {
         parent::__construct($level, $bubble);
     }
     
+    /**
+     * {@inheritdoc}
+     */
     protected function write(LogRecord $record): void
     {
         if (!$this->isRateLimited()) {
             $this->send($this->buildEmbed($record));
         } else {
-            MetaLogService::log('discord', 'Notificação para o Discord bloqueada por Rate Limit.');
+            $this->metaLogService->log('discord', 'Notificação para o Discord bloqueada por Rate Limit.');
         }
     }
 
+    /**
+     * Envia o payload para o webhook do Discord.
+     *
+     * @param array $payload O payload formatado para a API do Discord.
+     */
     private function send(array $payload): void
     {
         $jsonPayload = json_encode($payload);
@@ -59,9 +81,9 @@ class RateLimitingDiscordHandler extends AbstractProcessingHandler
         curl_close($ch);
 
         if ($httpCode >= 200 && $httpCode < 300) {
-            MetaLogService::log('discord', 'Notificação enviada com sucesso.', ['http_code' => $httpCode]);
+            $this->metaLogService->log('discord', 'Notificação enviada com sucesso.', ['http_code' => $httpCode]);
         } else {
-            MetaLogService::log('discord', 'Falha ao enviar notificação.', [
+            $this->metaLogService->log('discord', 'Falha ao enviar notificação.', [
                 'http_code' => $httpCode,
                 'curl_error' => $error,
                 'response_body' => $response
@@ -69,6 +91,12 @@ class RateLimitingDiscordHandler extends AbstractProcessingHandler
         }
     }
 
+    /**
+     * Constrói o embed formatado para a mensagem do Discord.
+     *
+     * @param LogRecord $record O registro de log.
+     * @return array O payload do embed.
+     */
     private function buildEmbed(LogRecord $record): array
     {
         $context = $record->context;
@@ -83,26 +111,10 @@ class RateLimitingDiscordHandler extends AbstractProcessingHandler
         }
 
         $fields = [
-            [
-                'name' => 'Arquivo',
-                'value' => "`" . ($context['file'] ?? 'N/A') . "`",
-                'inline' => false,
-            ],
-            [
-                'name' => 'Linha',
-                'value' => "`" . ($context['line'] ?? 'N/A') . "`",
-                'inline' => true,
-            ],
-            [
-                'name' => 'Nível',
-                'value' => $levelName,
-                'inline' => true,
-            ],
-            [
-                'name' => 'IP do Usuário',
-                'value' => $_SERVER['REMOTE_ADDR'] ?? 'N/A',
-                'inline' => true,
-            ],
+            ['name' => 'Arquivo', 'value' => "`" . ($context['file'] ?? 'N/A') . "`", 'inline' => false],
+            ['name' => 'Linha', 'value' => "`" . ($context['line'] ?? 'N/A') . "`", 'inline' => true],
+            ['name' => 'Nível', 'value' => $levelName, 'inline' => true],
+            ['name' => 'IP do Usuário', 'value' => $_SERVER['REMOTE_ADDR'] ?? 'N/A', 'inline' => true],
         ];
 
         if (TSession::getValue('logged')) {
@@ -110,40 +122,30 @@ class RateLimitingDiscordHandler extends AbstractProcessingHandler
                         "**Login:** `" . TSession::getValue('login') . "`\n" .
                         "**Nome:** `" . TSession::getValue('username') . "`\n" .
                         "**Email:** `" . TSession::getValue('usermail') . "`";
-            
-            $fields[] = [
-                'name' => '👤 Usuário Logado',
-                'value' => $userInfo,
-                'inline' => false,
-            ];
+            $fields[] = ['name' => '👤 Usuário Logado', 'value' => $userInfo, 'inline' => false];
         } else {
-            $fields[] = [
-                'name' => '👤 Sessão',
-                'value' => 'Nenhum usuário logado no momento do erro.',
-                'inline' => false,
-            ];
+            $fields[] = ['name' => '👤 Sessão', 'value' => 'Nenhum usuário logado no momento do erro.', 'inline' => false];
         }
 
         return [
-            'embeds' => [
-                [
-                    'title' => "🚨 " . mb_substr($record->message, 0, 250),
-                    'description' => $description,
-                    'color' => $levelColor,
-                    'author' => [
-                        'name' => $_SERVER['SERVER_NAME'] ?? 'localhost',
-                        'icon_url' => $iconUrl
-                    ],
-                    'fields' => $fields,
-                    'footer' => [
-                        'text' => 'Horário do Erro'
-                    ],
-                    'timestamp' => $record->datetime->format('c'),
-                ]
-            ]
+            'embeds' => [[
+                'title' => "🚨 " . mb_substr($record->message, 0, 250),
+                'description' => $description,
+                'color' => $levelColor,
+                'author' => ['name' => $_SERVER['SERVER_NAME'] ?? 'localhost', 'icon_url' => $iconUrl],
+                'fields' => $fields,
+                'footer' => ['text' => 'Horário do Erro'],
+                'timestamp' => $record->datetime->format('c'),
+            ]]
         ];
     }
 
+    /**
+     * Retorna a cor do embed com base no nível do log.
+     *
+     * @param Level $level
+     * @return int
+     */
     private function getLevelColor(Level $level): int
     {
         return match ($level) {
@@ -155,6 +157,12 @@ class RateLimitingDiscordHandler extends AbstractProcessingHandler
         };
     }
 
+    /**
+     * Retorna o ícone do embed com base no nível do log.
+     *
+     * @param Level $level
+     * @return string
+     */
     private function getLevelIcon(Level $level): string
     {
         return match ($level) {
@@ -165,23 +173,27 @@ class RateLimitingDiscordHandler extends AbstractProcessingHandler
         };
     }
 
+    /**
+     * Verifica se o limite de mensagens por minuto foi atingido.
+     *
+     * @return bool
+     */
     private function isRateLimited(): bool
     {
+        $cacheKey = 'discord_log_timestamps';
         $now = time();
-        $timestamps = [];
-
-        if (file_exists($this->cacheFile)) {
-            $timestamps = json_decode(file_get_contents($this->cacheFile), true) ?: [];
-        }
         
+        $timestamps = $this->cache->get($cacheKey, []);
+        
+        // Filtra timestamps mais velhos que 1 minuto
         $timestamps = array_filter($timestamps, fn($ts) => $now - $ts < 60);
 
         if (count($timestamps) >= $this->maxPerMinute) {
-            return true;
+            return true; // Limite atingido
         }
 
         $timestamps[] = $now;
-        file_put_contents($this->cacheFile, json_encode($timestamps));
+        $this->cache->set($cacheKey, $timestamps, 65); // Armazena por 65 segundos
         
         return false;
     }

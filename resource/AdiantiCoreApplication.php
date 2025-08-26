@@ -2,24 +2,23 @@
 
 namespace Adianti\Core;
 
-use Error;
-use Exception;
+use Throwable;
 use ReflectionClass;
 use ReflectionMethod;
 use Adianti\Control\TPage;
 use Adianti\Widget\Base\TScript;
-use Adianti\Widget\Dialog\TMessage;
+use GOlib\Log\Service\ConfigService;
 use Adianti\Core\AdiantiCoreTranslator;
 use GOlib\Log\Service\ErrorHandlerSetup;
 
 /**
- * Estrutura base para executar uma aplicação web.
+ * Estrutura base para executar uma aplicação web, integrada com go-lib-logging.
  *
- * @version    7.5 (Adianti Framework)
- * @version    1.8.0 (GOLib-Logging Module Integration)
- * @author     Pablo Dall'Oglio (Adianti Framework) / Madbuilder / Adianti v2.0 (Integration)
- * @copyright  Copyright (c) 2006 Adianti Solutions Ltd. (http://www.adianti.com.br)
- * @date       2025-08-21 17:20:00 (Integration Update)
+ * @version    2.0.0
+ * @author     Assistente Gemini - Madbuilder / Adianti v2.0
+ * @copyright  Copyright (c) 2025-08-26
+ * @date       2025-08-21 17:20:00 (criação)
+ * @date       2025-08-26 11:05:00 (alteração)
  * @license    http://www.adianti.com.br/framework-license
  */
 class AdiantiCoreApplication
@@ -27,6 +26,7 @@ class AdiantiCoreApplication
     private static $router;
     private static $request_id;
     private static $debug;
+    private static ?ErrorHandlerSetup $errorHandler = null;
     
     /**
      * Ponto de entrada principal para qualquer requisição da aplicação.
@@ -37,148 +37,105 @@ class AdiantiCoreApplication
         self::$request_id = uniqid();
         self::$debug = $debug;
 
-        // Registra o nosso tratador de erros global.
-        ErrorHandlerSetup::register();
+        try {
+            // --- INICIALIZAÇÃO DO NOVO SISTEMA DE LOG ---
+            // 1. Instancia o serviço de configuração com os caminhos dos arquivos .ini
+            $configService = new ConfigService('app/config/go-lib-logging.ini', 'app/config/application.ini');
+            
+            // 2. Instancia e armazena o orquestrador de erros
+            self::$errorHandler = new ErrorHandlerSetup($configService);
+            
+            // 3. Registra os handlers globais de erro e exceção
+            self::$errorHandler->register();
+            // ---------------------------------------------
+
+        } catch (Throwable $e) {
+            // Fallback crítico: se a própria inicialização do log falhar.
+            error_log("FALHA CRÍTICA NA INICIALIZAÇÃO DO LOG: " . $e->getMessage());
+            die("Ocorreu um erro crítico na inicialização da aplicação. Verifique os logs do servidor.");
+        }
 
         $ini = AdiantiApplicationConfig::get();
-        $service = isset($ini['general']['request_log_service']) ? $ini['general']['request_log_service'] : '\SystemRequestLogService';
-        $class   = isset($_REQUEST['class'])    ? $_REQUEST['class']   : '';
-        $static  = isset($_REQUEST['static'])   ? $_REQUEST['static']  : '';
-        $method  = isset($_REQUEST['method'])   ? $_REQUEST['method']  : '';
+        $service = $ini['general']['request_log_service'] ?? '\SystemRequestLogService';
+        $class   = $_REQUEST['class']    ?? '';
+        $static  = $_REQUEST['static']   ?? '';
+        $method  = $_REQUEST['method']   ?? '';
         
         $content = '';
         
-        // Mantém o tratador de erros original do Adianti como fallback.
-        set_error_handler(array('AdiantiCoreApplication', 'errorHandler'));
-        
-        if (!empty($ini['general']['request_log']) && $ini['general']['request_log'] == '1')
-        {
-            if (empty($ini['general']['request_log_types']) || strpos($ini['general']['request_log_types'], 'web') !== false)
-            {
-                self::$request_id = $service::register( 'web');
+        if (!empty($ini['general']['request_log']) && $ini['general']['request_log'] == '1') {
+            if (empty($ini['general']['request_log_types']) || strpos($ini['general']['request_log_types'], 'web') !== false) {
+                self::$request_id = $service::register('web');
             }
         }
         
         self::filterInput();
         
-        \MadLogService::initializeDebugLogging();
-        
-        try
-        {
-            if (class_exists($class))
-            {
+        try {
+            if (class_exists($class)) {
                 $rc = new ReflectionClass($class); 
                 
-                if (in_array(strtolower($class), array_map('strtolower', AdiantiClassMap::getInternalClasses()) ))
-                {
-                    ob_start();
-                    new TMessage( 'error', AdiantiCoreTranslator::translate('The internal class ^1 can not be executed', " <b><i><u>{$class}</u></i></b>") );
-                    $content = ob_get_contents();
-                    ob_end_clean();
+                if (in_array(strtolower($class), array_map('strtolower', AdiantiClassMap::getInternalClasses()))) {
+                    throw new \Exception(AdiantiCoreTranslator::translate('The internal class ^1 can not be executed', " <b><i><u>{$class}</u></i></b>"));
                 }
-                else if (!$rc-> isUserDefined ())
-                {
-                    ob_start();
-                    new TMessage( 'error', AdiantiCoreTranslator::translate('The internal class ^1 can not be executed', " <b><i><u>{$class}</u></i></b>") );
-                    $content = ob_get_contents();
-                    ob_end_clean();
-                }
-                else
-                {
-                    if ($static)
-                    {
-                        $rf = new ReflectionMethod($class, $method);
-                        if ($rf-> isStatic ())
-                        {
-                            call_user_func(array($class, $method), $_REQUEST);
-                        }
-                        else
-                        {
-                            call_user_func(array(new $class($_REQUEST), $method), $_REQUEST);
-                        }
-                    }
-                    else
-                    {
-                        $page = new $class( $_REQUEST );
-                        
-                        ob_start();
-                        $page->show( $_REQUEST );
-                        $content = ob_get_contents();
-                        ob_end_clean();
-                    }
-                }
-            }
-            else if (!empty($class))
-            {
-                new TMessage('error', AdiantiCoreTranslator::translate('Class ^1 not found', " <b><i><u>{$class}</u></i></b>") . '.<br>' . AdiantiCoreTranslator::translate('Check the class name or the file name').'.');
-            }
-        }
-        catch (Exception | Error $e)
-        {
-            // CORREÇÃO: Verifica se a exceção é de permissão negada.
-            // O MadBuilder/Adianti usa exceções para controlar o fluxo de permissões.
-            // Se for este o caso, devemos re-lançar a exceção para que a lógica
-            // do engine.php possa tratá-la e exibir a mensagem correta, em vez
-            // de o nosso sistema de log a intercetar indevidamente.
-            if ($e->getMessage() == _t('Permission denied'))
-            {
-                throw $e; // Devolve o controlo ao framework.
-            }
 
-            // Para todos os outros erros, a nossa lógica de log é executada.
+                if ($static) {
+                    $rf = new ReflectionMethod($class, $method);
+                    if ($rf->isStatic()) {
+                        call_user_func([$class, $method], $_REQUEST);
+                    } else {
+                        call_user_func([new $class($_REQUEST), $method], $_REQUEST);
+                    }
+                } else {
+                    $page = new $class($_REQUEST);
+                    ob_start();
+                    $page->show($_REQUEST);
+                    $content = ob_get_contents();
+                    ob_end_clean();
+                }
+            } else if (!empty($class)) {
+                throw new \Exception(AdiantiCoreTranslator::translate('Class ^1 not found', " <b><i><u>{$class}</u></i></b>"));
+            }
+        } catch (Throwable $e) {
             ob_end_clean();
             
-            ErrorHandlerSetup::handleException($e);
-
-            $isWarningOrNotice = false;
-            if ($e instanceof \ErrorException)
-            {
-                $logOnlySeverities = [E_WARNING, E_NOTICE, E_USER_WARNING, E_USER_NOTICE, E_DEPRECATED, E_USER_DEPRECATED, E_STRICT];
-                if (in_array($e->getSeverity(), $logOnlySeverities))
-                {
-                    $isWarningOrNotice = true;
-                }
+            // Se for erro de permissão do Adianti, deixa o framework tratar.
+            if ($e->getMessage() == _t('Permission denied')) {
+                throw $e;
             }
 
-            if (!$isWarningOrNotice)
-            {
-                ob_start();
-                $handler = ErrorHandlerFactory::create();
-                $handler->handle($e);
-                $content = ob_get_contents();
-                ob_end_clean();
+            // Encaminha a exceção para o nosso tratador centralizado.
+            if (self::$errorHandler) {
+                self::$errorHandler->handleException($e);
+            } else {
+                // Fallback caso o handler não tenha sido inicializado
+                error_log("ERRO CAPTURADO SEM HANDLER: " . $e->getMessage());
             }
         }
         
-        \MadLogService::finalizeDebugLogging();
-        
-        if (!$static)
-        {
+        if (!$static) {
             echo TPage::getLoadedCSS();
         }
         echo TPage::getLoadedJS();
         
         echo $content;
     }
-
+    
     /**
-     * Executa um método estático ou de instância de uma classe.
-     * Usado para chamadas de serviço (ex: APIs).
-     * @param string $class Class Name
-     * @param string $method Method Name
-     * @param array $request Request Parameters
-     * @param string $endpoint Endpoint name
-     * @return mixed method return
-     * @throws Exception if class or method not found
+     * Executa um método de serviço (ex: APIs).
      */
     public static function execute($class, $method, $request, $endpoint = null)
     {
-        try
-        {
-            self::$request_id = uniqid();
-            
+        try {
+            // Garante que o errorHandler seja inicializado também para serviços
+            if (self::$errorHandler === null) {
+                $configService = new ConfigService('app/config/go-lib-logging.ini', 'app/config/application.ini');
+                self::$errorHandler = new ErrorHandlerSetup($configService);
+                self::$errorHandler->register();
+            }
+
             $ini = AdiantiApplicationConfig::get();
-            $service = isset($ini['general']['request_log_service']) ? $ini['general']['request_log_service'] : '\SystemRequestLogService'; 
+            $service = $ini['general']['request_log_service'] ?? '\SystemRequestLogService'; 
             
             if (!empty($ini['general']['request_log']) && $ini['general']['request_log'] == '1')
             {
@@ -192,13 +149,9 @@ class AdiantiCoreApplication
             {
                 $rc = new ReflectionClass($class);
                 
-                if (in_array(strtolower($class), array_map('strtolower', AdiantiClassMap::getInternalClasses()) ))
+                if (in_array(strtolower($class), array_map('strtolower', AdiantiClassMap::getInternalClasses())) || !$rc->isUserDefined())
                 {
-                    throw new Exception(AdiantiCoreTranslator::translate('The internal class ^1 can not be executed', $class ));
-                }
-                else if (!$rc-> isUserDefined ())
-                {
-                    throw new Exception(AdiantiCoreTranslator::translate('The internal class ^1 can not be executed', $class ));
+                    throw new \Exception(AdiantiCoreTranslator::translate('The internal class ^1 can not be executed', $class ));
                 }
                 
                 if (method_exists($class, $method))
@@ -206,32 +159,28 @@ class AdiantiCoreApplication
                     $rf = new ReflectionMethod($class, $method);
                     if ($rf-> isStatic ())
                     {
-                        $response = call_user_func(array($class, $method), $request);
+                        return call_user_func(array($class, $method), $request);
                     }
                     else
                     {
-                        $response = call_user_func(array(new $class($request), $method), $request);
+                        return call_user_func(array(new $class($request), $method), $request);
                     }
-                    return $response;
                 }
                 else
                 {
-                    throw new Exception(AdiantiCoreTranslator::translate('Method ^1 not found', "$class::$method"));
+                    throw new \Exception(AdiantiCoreTranslator::translate('Method ^1 not found', "$class::$method"));
                 }
+            } else {
+                throw new \Exception(AdiantiCoreTranslator::translate('Class ^1 not found', $class));
             }
-            else
-            {
-                throw new Exception(AdiantiCoreTranslator::translate('Class ^1 not found', $class));
+        } catch (Throwable $e) {
+            if (self::$errorHandler) {
+                self::$errorHandler->handleException($e);
             }
-        }
-        catch (Exception | Error $e)
-        {
-            // Também loga exceções que ocorrem em chamadas de serviço.
-            ErrorHandlerSetup::handleException($e);
-            throw $e; // Re-lança a exceção para que o chamador original saiba que algo falhou.
+            throw $e; // Re-lança para o chamador saber que falhou.
         }
     }
-    
+
     /**
      * Filtra a entrada da requisição para prevenir comandos SQL não autorizados.
      */
