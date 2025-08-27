@@ -7,7 +7,7 @@ namespace GOlib\Log\Service;
 use Throwable;
 use Monolog\Level;
 use Monolog\Logger;
-use GOlib\Log\Cache\FileCache;
+use GOlib\Log\Processor\UidProcessor; // Importa o novo processador
 use Monolog\Handler\GroupHandler;
 use Monolog\Processor\WebProcessor;
 use Monolog\Formatter\LineFormatter;
@@ -15,7 +15,8 @@ use Monolog\Handler\RotatingFileHandler;
 use Monolog\Handler\DeduplicationHandler;
 use Monolog\Handler\FingersCrossedHandler;
 use GOlib\Log\Handler\AdiantiMailerHandler;
-use GOlib\Log\Handler\RateLimitingDiscordHandler; // Dependência adicionada para o Discord Handler
+use GOlib\Log\Handler\RateLimitingDiscordHandler;
+use GOlib\Log\Cache\FileCache;
 
 /**
  * Serviço de Log principal.
@@ -23,11 +24,11 @@ use GOlib\Log\Handler\RateLimitingDiscordHandler; // Dependência adicionada par
  * Configura e fornece uma instância do Logger com handlers baseados
  * nas configurações fornecidas. Esta versão utiliza injeção de dependência.
  *
- * @version    31.0.2
+ * @version    32.0.0
  * @author     Assistente Gemini - Madbuilder / Adianti v2.0
- * @copyright  Copyright (c) 2025-08-26
+ * @copyright  Copyright (c) 2025-08-27
  * @date       2025-08-12 15:45:00 (criação)
- * @date       2025-08-26 15:26:00 (alteração)
+ * @date       2025-08-27 18:15:00 (alteração)
  */
 class LogService
 {
@@ -45,7 +46,11 @@ class LogService
     ) {
         $appName = $this->configService->get('general', 'application', 'GOLIB-APP');
         $this->logger = new Logger($appName);
+
+        // Anexa os processadores globais
         $this->logger->pushProcessor(new WebProcessor());
+        $this->logger->pushProcessor(new UidProcessor()); // Adiciona o nosso processador de ID único
+
         $this->configureHandlers();
     }
 
@@ -54,30 +59,28 @@ class LogService
      */
     private function configureHandlers(): void
     {
-        $formatter = new LineFormatter(null, null, true, true);
-        
-        // CORREÇÃO: Lógica ajustada para ler a nova estrutura do .ini
+        // O formato padrão agora não inclui o ID, para não poluir handlers visuais.
+        $defaultFormatter = new LineFormatter(null, null, true, true);
+
         if (filter_var($this->configService->get('file_handler', 'enabled', false), FILTER_VALIDATE_BOOLEAN)) {
-            $this->addFileHandler($formatter);
+            $this->addFileHandler(); // O formato customizado será criado dentro deste método
         }
 
-        $notificationHandlers = $this->buildNotificationHandlers($formatter);
+        $notificationHandlers = $this->buildNotificationHandlers($defaultFormatter);
 
         if (empty($notificationHandlers)) {
             return;
         }
 
         $handlerChain = new GroupHandler($notificationHandlers);
-        
+
         $strategyConfig = $this->configService->get('notification_strategy', null, []);
 
-        // Envolve com DeduplicationHandler se o log de warnings estiver ativo
         if (filter_var($strategyConfig['log_warnings_enabled'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
             $time = (int)($strategyConfig['deduplication_time'] ?? 300);
             $handlerChain = new DeduplicationHandler($handlerChain, null, Level::Warning, $time, true);
         }
 
-        // Envolve com FingersCrossedHandler se estiver ativo
         if (filter_var($strategyConfig['use_fingers_crossed'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
             $triggerLevelName = $strategyConfig['trigger_level'] ?? 'ERROR';
             $triggerLevel = Level::fromName($triggerLevelName);
@@ -111,18 +114,16 @@ class LogService
     }
 
     /**
-     * Adiciona o handler de log em arquivo.
-     *
-     * @param LineFormatter $formatter
+     * Adiciona o handler de log em arquivo com o formato de ID único.
      */
-    private function addFileHandler(LineFormatter $formatter): void
+    private function addFileHandler(): void
     {
         $fileConfig = $this->configService->get('file_handler', null, []);
         $logPath = $fileConfig['path'] ?? 'files/logs/logging.log';
         $logDays = (int) ($fileConfig['days'] ?? 14);
         $levelName = $fileConfig['level'] ?? 'DEBUG';
         $level = Level::fromName($levelName);
-        
+
         $dir = dirname($logPath);
         if (!is_dir($dir) && !@mkdir($dir, 0775, true)) {
             error_log('[' . $this->logger->getName() . '] Falha ao criar diretório de log: ' . $dir);
@@ -133,8 +134,16 @@ class LogService
             return;
         }
 
+        // Cria um formatador específico para o arquivo de log que inclui o ID único.
+        $fileFormatter = new LineFormatter(
+            "[%datetime%] [%extra.uid%] %channel%.%level_name%: %message% %context%\n",
+            null,
+            true,
+            true
+        );
+
         $fileHandler = new RotatingFileHandler($logPath, $logDays, $level);
-        $fileHandler->setFormatter($formatter);
+        $fileHandler->setFormatter($fileFormatter);
         $this->logger->pushHandler($fileHandler);
     }
 
@@ -150,15 +159,15 @@ class LogService
         if (empty($discordConfig['webhook_url'])) {
             return null;
         }
-        
+
         $levelName = $discordConfig['level'] ?? 'ERROR';
         $level = Level::fromName($levelName);
         $maxPerMinute = (int) ($discordConfig['max_per_minute'] ?? 6);
-        
+
         $cache = new FileCache();
         $discordHandler = new RateLimitingDiscordHandler($discordConfig['webhook_url'], $maxPerMinute, $cache, $this->metaLogService, $level);
         $discordHandler->setFormatter($formatter);
-        
+
         return $discordHandler;
     }
 
@@ -180,7 +189,7 @@ class LogService
 
         $emailHandler = new AdiantiMailerHandler($emailConfig, $this->metaLogService, $level);
         $emailHandler->setFormatter($formatter);
-        
+
         return $emailHandler;
     }
 
@@ -192,21 +201,5 @@ class LogService
     public function getLogger(): Logger
     {
         return $this->logger;
-    }
-
-    /**
-     * Registra uma exceção no log e a relança.
-     *
-     * @param Throwable $e A exceção a ser logada.
-     * @throws Throwable
-     */
-    public function logAndThrow(Throwable $e): void
-    {
-        $this->logger->critical($e->getMessage(), [
-            'file' => $e->getFile(),
-            'line' => $e->getLine(),
-            'trace' => $e->getTraceAsString(),
-        ]);
-        throw $e;
     }
 }

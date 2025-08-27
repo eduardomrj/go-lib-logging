@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 namespace GOlib\Log\Handler;
 
-use Exception;
-use MailService;
+use Monolog\Handler\AbstractProcessingHandler;
 use Monolog\Level;
 use Monolog\LogRecord;
 use Adianti\Registry\TSession;
 use GOlib\Log\Service\MetaLogService;
-use Monolog\Handler\AbstractProcessingHandler; // Usa a classe MailService do template Adianti
+use Exception;
+use MailService; // Usa a classe MailService do template Adianti
 
 /**
  * Handler para enviar logs por e-mail usando a classe MailService.
@@ -18,22 +18,14 @@ use Monolog\Handler\AbstractProcessingHandler; // Usa a classe MailService do te
  * Formata o log como um e-mail HTML e o envia usando as configurações de
  * SMTP do sistema, registrando o status do envio via MetaLogService.
  *
- * @version    22.0.0
+ * @version    23.0.0
  * @author     Assistente Gemini - Madbuilder / Adianti v2.0
- * @copyright  Copyright (c) 2025-08-26
+ * @copyright  Copyright (c) 2025-08-27
  * @date       2025-08-12 13:54:00 (criação)
- * @date       2025-08-26 10:45:00 (alteração)
+ * @date       2025-08-27 18:25:00 (alteração)
  */
 class AdiantiMailerHandler extends AbstractProcessingHandler
 {
-    /**
-     * Construtor do AdiantiMailerHandler.
-     *
-     * @param array $config Configurações específicas do handler (to_address, subject).
-     * @param MetaLogService $metaLogService Serviço para registrar o status do envio.
-     * @param int|Level $level O nível mínimo de log que este handler irá processar.
-     * @param bool $bubble Se os registros devem ou não ser propagados para outros handlers.
-     */
     public function __construct(
         private array $config,
         private MetaLogService $metaLogService,
@@ -53,16 +45,14 @@ class AdiantiMailerHandler extends AbstractProcessingHandler
             $subject = $this->config['subject'];
             $body    = $this->buildHtmlBody($record);
 
-            // Utiliza o MailService, que já busca as configurações de SMTP do banco de dados.
             MailService::send($to, $subject, $body, 'html');
 
-            $this->metaLogService->log('email', 'Notificação enviada com sucesso via MailService.', ['to' => $to]);
-
+            $this->metaLogService->log('email', 'Notificação enviada com sucesso via MailService.', ['to' => $to, 'uid' => $record->extra['uid'] ?? 'N/A']);
         } catch (Exception $e) {
-            // Captura qualquer exceção e a registra usando o meta-log.
             $this->metaLogService->log('email', 'Falha ao enviar notificação via MailService.', [
                 'to' => $this->config['to_address'],
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
+                'uid' => $record->extra['uid'] ?? 'N/A'
             ]);
         }
     }
@@ -78,20 +68,22 @@ class AdiantiMailerHandler extends AbstractProcessingHandler
         $context = $record->context;
         $levelName = $record->level->getName();
         $levelColor = $this->getLevelColor($record->level);
+        $uid = $record->extra['uid'] ?? 'N/A';
 
         $html = "<!DOCTYPE html><html><head><style>" .
-                "body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background-color: #f4f4f4; }" .
-                ".container { background-color: #ffffff; border: 1px solid #dddddd; max-width: 800px; margin: auto; padding: 20px; }" .
-                ".header { background-color: {$levelColor}; color: white; padding: 10px; text-align: center; font-size: 20px; }" .
-                "table { width: 100%; border-collapse: collapse; margin-top: 20px; }" .
-                "th, td { padding: 8px; text-align: left; border-bottom: 1px solid #ddd; }" .
-                "th { background-color: #f2f2f2; width: 150px; }" .
-                "pre { background-color: #eeeeee; padding: 10px; border: 1px solid #cccccc; white-space: pre-wrap; word-wrap: break-word; }" .
-                "</style></head><body>";
-        
+            "body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background-color: #f4f4f4; }" .
+            ".container { background-color: #ffffff; border: 1px solid #dddddd; max-width: 800px; margin: auto; padding: 20px; }" .
+            ".header { background-color: {$levelColor}; color: white; padding: 10px; text-align: center; font-size: 20px; }" .
+            "table { width: 100%; border-collapse: collapse; margin-top: 20px; }" .
+            "th, td { padding: 8px; text-align: left; border-bottom: 1px solid #ddd; }" .
+            "th { background-color: #f2f2f2; width: 150px; }" .
+            "pre { background-color: #eeeeee; padding: 10px; border: 1px solid #cccccc; white-space: pre-wrap; word-wrap: break-word; }" .
+            "</style></head><body>";
+
         $html .= "<div class='container'>";
         $html .= "<div class='header'>🚨 Notificação de Erro: {$levelName} 🚨</div>";
         $html .= "<table>";
+        $html .= "<tr><th>ID do Evento</th><td><b>{$uid}</b></td></tr>";
         $html .= "<tr><th>Mensagem</th><td>" . htmlspecialchars($record->message) . "</td></tr>";
         $html .= "<tr><th>Arquivo</th><td>" . ($context['file'] ?? 'N/A') . "</td></tr>";
         $html .= "<tr><th>Linha</th><td>" . ($context['line'] ?? 'N/A') . "</td></tr>";
@@ -107,7 +99,7 @@ class AdiantiMailerHandler extends AbstractProcessingHandler
         }
 
         $html .= "</table>";
-        
+
         if (!empty($context['trace'])) {
             $html .= "<h3>Stack Trace:</h3>";
             $html .= "<pre>" . htmlspecialchars($context['trace']) . "</pre>";

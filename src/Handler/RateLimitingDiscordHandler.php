@@ -7,18 +7,18 @@ namespace GOlib\Log\Handler;
 use Monolog\Level;
 use Monolog\LogRecord;
 use Adianti\Registry\TSession;
-use GOlib\Log\Service\MetaLogService;
 use GOlib\Log\Contracts\CacheInterface;
+use GOlib\Log\Service\MetaLogService;
 use Monolog\Handler\AbstractProcessingHandler;
 
 /**
  * Handler customizado do Monolog para enviar logs para o Discord com Rate Limit.
  *
- * @version    18.0.1
+ * @version    19.0.0
  * @author     Assistente Gemini - Madbuilder / Adianti v2.0
- * @copyright  Copyright (c) 2025-08-26
+ * @copyright  Copyright (c) 2025-08-27
  * @date       2025-08-12 11:55:00 (criação)
- * @date       2025-08-26 18:45:00 (alteração)
+ * @date       2025-08-27 18:20:00 (alteração)
  */
 class RateLimitingDiscordHandler extends AbstractProcessingHandler
 {
@@ -32,19 +32,18 @@ class RateLimitingDiscordHandler extends AbstractProcessingHandler
     ) {
         parent::__construct($level, $bubble);
     }
-    
+
     protected function write(LogRecord $record): void
     {
         if (!$this->isRateLimited()) {
             $this->send($this->buildEmbed($record));
         } else {
-            $this->metaLogService->log('discord', 'Notificação para o Discord bloqueada por Rate Limit.');
+            $this->metaLogService->log('discord', 'Notificação para o Discord bloqueada por Rate Limit.', ['uid' => $record->extra['uid'] ?? 'N/A']);
         }
     }
 
     private function send(array $payload): void
     {
-        // CORREÇÃO: Evita chamadas de rede durante os testes.
         if (str_starts_with($this->webhookUrl, 'https://example.com')) {
             $this->metaLogService->log('discord', 'Notificação enviada com sucesso (modo de teste).', ['http_code' => 204]);
             return;
@@ -59,7 +58,7 @@ class RateLimitingDiscordHandler extends AbstractProcessingHandler
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_TIMEOUT => 10
         ]);
-        
+
         $response = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $error = curl_error($ch);
@@ -75,13 +74,14 @@ class RateLimitingDiscordHandler extends AbstractProcessingHandler
             ]);
         }
     }
-    
+
     private function buildEmbed(LogRecord $record): array
     {
         $context = $record->context;
         $levelColor = $this->getLevelColor($record->level);
         $levelName = $record->level->getName();
         $iconUrl = $this->getLevelIcon($record->level);
+        $uid = $record->extra['uid'] ?? 'N/A';
 
         $description = '';
         if (!empty($context['trace'])) {
@@ -90,17 +90,38 @@ class RateLimitingDiscordHandler extends AbstractProcessingHandler
         }
 
         $fields = [
-            ['name' => 'Arquivo', 'value' => "`" . ($context['file'] ?? 'N/A') . "`", 'inline' => false],
-            ['name' => 'Linha', 'value' => "`" . ($context['line'] ?? 'N/A') . "`", 'inline' => true],
-            ['name' => 'Nível', 'value' => $levelName, 'inline' => true],
-            ['name' => 'IP do Usuário', 'value' => $_SERVER['REMOTE_ADDR'] ?? 'N/A', 'inline' => true],
+            [
+                'name' => '🆔 ID do Evento',
+                'value' => "`{$uid}`",
+                'inline' => true,
+            ],
+            [
+                'name' => 'Nível',
+                'value' => $levelName,
+                'inline' => true,
+            ],
+            [
+                'name' => 'Arquivo',
+                'value' => "`" . ($context['file'] ?? 'N/A') . "`",
+                'inline' => false,
+            ],
+            [
+                'name' => 'Linha',
+                'value' => "`" . ($context['line'] ?? 'N/A') . "`",
+                'inline' => true,
+            ],
+            [
+                'name' => 'IP do Usuário',
+                'value' => $_SERVER['REMOTE_ADDR'] ?? 'N/A',
+                'inline' => true,
+            ],
         ];
 
         if (TSession::getValue('logged')) {
             $userInfo = "**ID:** `" . TSession::getValue('userid') . "`\n" .
-                        "**Login:** `" . TSession::getValue('login') . "`\n" .
-                        "**Nome:** `" . TSession::getValue('username') . "`\n" .
-                        "**Email:** `" . TSession::getValue('usermail') . "`";
+                "**Login:** `" . TSession::getValue('login') . "`\n" .
+                "**Nome:** `" . TSession::getValue('username') . "`\n" .
+                "**Email:** `" . TSession::getValue('usermail') . "`";
             $fields[] = ['name' => '👤 Usuário Logado', 'value' => $userInfo, 'inline' => false];
         } else {
             $fields[] = ['name' => '👤 Sessão', 'value' => 'Nenhum usuário logado no momento do erro.', 'inline' => false];
@@ -118,6 +139,7 @@ class RateLimitingDiscordHandler extends AbstractProcessingHandler
             ]]
         ];
     }
+
     private function getLevelColor(Level $level): int
     {
         return match ($level) {
@@ -128,6 +150,7 @@ class RateLimitingDiscordHandler extends AbstractProcessingHandler
             default => 9807270, // Cinza
         };
     }
+
     private function getLevelIcon(Level $level): string
     {
         return match ($level) {
@@ -137,13 +160,14 @@ class RateLimitingDiscordHandler extends AbstractProcessingHandler
             default => 'https://i.imgur.com/eB32Ssw.png', // Default
         };
     }
+
     private function isRateLimited(): bool
     {
         $cacheKey = 'discord_log_timestamps';
         $now = time();
-        
+
         $timestamps = $this->cache->get($cacheKey, []);
-        
+
         $timestamps = array_filter($timestamps, fn($ts) => $now - $ts < 60);
 
         if (count($timestamps) >= $this->maxPerMinute) {
@@ -152,7 +176,7 @@ class RateLimitingDiscordHandler extends AbstractProcessingHandler
 
         $timestamps[] = $now;
         $this->cache->set($cacheKey, $timestamps, 65);
-        
+
         return false;
     }
 }
