@@ -1,6 +1,6 @@
 {
   "name": "eduardomrj/go-lib-logging",
-  "description": "Biblioteca de logging para PHP 8.2/Adianti 7.5 baseada em Monolog",
+  "description": "Biblioteca de logging para PHP 8.2/Adianti 7.5 (v2.0+ com Injeção de Dependência) baseada em Monolog.",
   "type": "library",
   "license": "MIT",
   "homepage": "https://github.com/eduardomrj/go-lib-logging",
@@ -8,12 +8,18 @@
     "adianti",
     "logging",
     "monolog",
-    "whoops"
+    "whoops",
+    "psr-3"
   ],
   "authors": [
     {
       "name": "Eduardo Martins",
-      "email": "eduardo@sysautomacao.com.br"
+      "email": "eduardo@sysautomacao.com.br",
+      "role": "Autor Original"
+    },
+    {
+      "name": "Assistente Gemini - Madbuilder / Adianti v2.0",
+      "role": "Refatoração e Arquitetura v2.0"
     }
   ],
   "require": {
@@ -39,10 +45,5 @@
   },
   "support": {
     "issues": "https://github.com/eduardomrj/go-lib-logging/issues"
-  },
-  "extra": {
-    "branch-alias": {
-      "dev-main": "1.0.x-dev"
-    }
   }
 }
