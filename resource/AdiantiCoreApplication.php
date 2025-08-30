@@ -444,6 +444,31 @@ class AdiantiCoreApplication
         }
         return $headers;
     }
+
+    /**
+     * Shows a page with the given class and method.
+     *
+     * @param string $class The class name.
+     * @param string|null $method The method name (optional).
+     * @param array|null $parameters Additional parameters (optional).
+     */
+
+     public static function showPage($class, $method = NULL, $parameters = NULL)
+     {
+         $page = new $class($parameters);
+         
+         if($method)
+         {
+             $page->$method($parameters);
+         }
+         
+         $page->setTargetContainer($parameters['target_container'] ?? 'adianti_div_content');
+         
+         $page->setProperty('class', '');
+         $page->setIsWrapped(true);
+         $page->show();
+     }
+ 
     
     /**
      * Retorna o ID único da requisição.
